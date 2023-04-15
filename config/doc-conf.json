@@ -1,0 +1,56 @@
+{
+  "alerting":{
+    "path":"./alerting",
+    "files":["Alert.js","Email.js","SimplePriceAlert.js","Slack.js","Telegram.js","TelegramSession.js"],
+    "outDir": "alerting"
+  },
+  "engine":{
+    "path":"./engine",
+    "files":["BackTest.js","BitFox.js","DataLoader.js"],
+    "outDir": "engine"
+  },
+
+  "events":{
+    "path":"./lib",
+    "files":[
+      "events/EventHandler.js"
+    ],
+    "outDir": "events"
+  },
+  "util": {
+    "path": "./lib",
+    "files": ["utility/Log.js","utility/util.js"],
+    "outDir":"util"
+  },
+  "model": {
+    "path": "./lib",
+    "files": [
+      "model/Candlesticks.js",
+      "model/Edge.js",
+      "model/IndicatorConvergence.js",
+      "model/Mock.js",
+      "model/Model.js",
+      "model/Point.js"],
+    "outDir":"model"
+  },
+  "states": {
+    "path": "./lib",
+    "files": ["states/States.js"],
+    "outDir":"states"
+  },
+  "indicators": {
+    "path":"./lib",
+    "files":["indicators/Indicators.js"],
+    "outDir": "indicators"
+  },
+  "service":{
+    "path":"./service",
+    "files":["ExchangeService.js","MockService.js"],
+    "outDir":"service"
+  },
+  "strategies":{
+    "path":"./strategies",
+    "files":["Strategy.js"],
+    "outDir":"strategies"
+  }
+}

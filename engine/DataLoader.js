@@ -2,49 +2,125 @@ let ExchangeService = require("../service/ExchangeService").Service;
 const utils = require("../lib/utility/util");
 const {Log} = require("../lib/utility/Log");
 
+/**
+ * Class Builder
+ *
+ *
+ * The DataLoader.Builder Class is just a helper class that allows you to be more in control of creating DataLoaders
+ * By Using interface methods that set dedicated fields on the Engine.
+ * This class is accessible through Bitfox exports and can be imported into your code base by typing
+ *
+ * let {DataLoaderBuilder} = require("bitfox").bitfox
+ */
 class Builder{
+    /**
+     *
+     * @returns {Builder}
+     */
     static builder(){return new Builder()}
     constructor(){
         this.args = {};
         this.args.public =true;
     }
+
+    /**
+     *
+     * @param verbose {Boolean} A Boolean to indicate if the user wants to enable logging for Data Polls
+     * @returns {Builder}
+     */
     setVerbose(verbose){
         this.args.verbose = verbose || false; 
         return this;
     }
-    setStorage(atorage='nedb'){
+
+    /**
+     *
+     * @param storage {String} string representation to indicate whether the user wants to store the retrieved data in one of the
+     *                         supported storage options (In the pre-release version < 1 this is not yet supported!)
+     *
+     * @returns {Builder}
+     */
+    setStorage(storage='nedb'){
         this.args.storage = 'nedb'; 
         return this;
     };
+
+    /***
+     *
+     * @param exchangeName {String} The name of the Target Exchange to pull Data From!
+     * @returns {Builder}
+     */
     setExchangeName(exchangeName){
         this.args.exchangeName = exchangeName;
         return this;
     }
-    
+
+    /**
+     *
+     * @param symbol {String} The Base/Quote Currency symbol to use for the data poll. example: ADAUSDT| BTCUSDT etc.
+     * @returns {Builder}
+     */
     setSymbol(symbol){
         this.args.symbol =symbol; 
         return this;
     }
+
+    /**
+     *
+     * @param requiredCandles {Number} The Number of Candles to fetch with each Data Poll
+     * @returns {Builder}
+     */
     setRequiredCandles(requiredCandles){
         this.args.requiredCandles = requiredCandles;
         return this;
     }
+
+    /**
+     *
+     * @param pollRate {Number} The number of times we should ask the Target exchange to give us Historical data for the given symbol!
+     * @returns {Builder}
+     */
     setPollRate(pollRate){
         this.args.pollRate = pollRate; 
         return this;
     };
+
+    /**
+     *
+     * @param timeframe {String} The timeframe or candle interval we like to use for the Historical Data Fetch
+     * @returns {Builder}
+     */
     setTimeFrame(timeframe){
         this.args.timeframe = timeframe;
         return this;
     }
+
+    /**
+     *
+     * @returns {DataLoader} The instantiated DataLoader instance
+     */
     build(){
         return DataLoader.getInstance(this.args);
     }
 }
 
+/**
+ * Class Data Loader
+ *
+ * This class is responsible to make API requests to a selected exchange and fetch iteratively Historical Candle Data
+ */
 class DataLoader{
+    /**
+     * Static Factory method return a DataBuilder Instance
+     * @param args {any} the options or argument object to instantiate a DataLoader we provide a easy-to-use Builder Interface
+     * @returns {DataLoader}
+     */
     static getInstance(args){ return new DataLoader(args)}
 
+    /**
+     * @param args {any} the options or argument object to instantiate a DataLoader we provide a easy-to-use Builder Interface
+     * @returns {DataLoader}
+     */
     constructor(args) {
         this.verbose = args.verbose || false;
         this.storage = 'nedb';
@@ -59,11 +135,21 @@ class DataLoader{
         this.exchange = ExchangeService.getService(args);
         this.context = args;
     }
+
+    /**
+     *
+     * @param args {any} the options or argument object to instantiate a DataLoader we provide a easy-to-use Builder Interface
+     * @returns {Promise<DataLoader>} Sets up the exchange Client and then returns the DataLoader instance
+     */
     async setUpClient(args=null){
         await this.exchange.setUpClient( this.exchangeName, args || this.context );
         return this;
     }
 
+    /**
+     *
+     * @returns {Promise}  This method is responsible to start the polling process and returns the final Historical Candle data
+     */
     async load(){
         let dates = [];
         let lastDate = 0;
@@ -108,14 +194,11 @@ class DataLoader{
     }
 }
 
+/**
+ *
+ * @type {{DataLoaderEngine: DataLoader, dataLoaderEngineBuilder: (function(): Builder)}}
+ */
 module.exports = {
     DataLoaderEngine:DataLoader,
-    dataLoaderEngineBuilder:Builder.builder
+    DataLoaderBuilder:Builder.builder
 }
-// const testRun = async  () =>{
-//     let dataLoader = DataLoader.getInstance({exchange:"bybit",symbol:"ADA/USDT",requiredCandles:200,pollRate:1000,timeframe:"15m", verbose:true});
-//     await dataLoader.setUpClient({public:true,options:{'defaultType': 'spot', 'adjustForTimeDifference': true,'recvwindow':7000 }});
-//     await dataLoader.load();
-// }
-//
-// testRun();
