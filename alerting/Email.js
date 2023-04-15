@@ -1,4 +1,8 @@
 /**
+ *
+ */
+
+/**
  * Class Email
  *
  * This class is an Email Client that wraps around sendgrid Emailing API
@@ -24,13 +28,16 @@ class Email{
     static factory(){return new Email()}
 
     /**
+     * @module Email
      * @typedef {Object} options
      * @property {String} token  The API token to send email
+     * @property {string} to the email address to send the email to
+     * @property {string} from the email address to send email from
      */
 
     /**
      *
-     * @param options  sets the API token on the Email Client
+     * @param options.token {options} sets the API token on the Email Client
      */
     setOptions(options){
         this.sgMail = require('@sendgrid/mail');
@@ -39,13 +46,8 @@ class Email{
     }
 
     /**
-     * @typedef {Object} options
-     * @property {string} to the email address to send the email to
-     * @property {string} from the email address to send email from
-     */
-    /**
      *
-     * @param options
+     * @param options {options} The Emailing options
      * @param message {String} the text content for the email
      */
     createMessage(options,message){
