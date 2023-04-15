@@ -1,4 +1,4 @@
-let {dataLoaderEngineBuilder,Strategy,utils,getModels} = require("../engine/BitFox");
+let {DataLoaderBuilder,Strategy,utils,getModels} = require("../engine/BitFox");
 
 let{ Point, Edge, IndicatorConvergence} = getModels;
 

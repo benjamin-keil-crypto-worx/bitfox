@@ -5,11 +5,29 @@ const {Log} = require("../lib/utility/Log");
 const Mock = require("../service/MockService").Service;
 const fs = require("fs");
 
+/**
+ * Class BackTest
+ *
+ * This class is used by the BitFoxEngine to run Backtest against a Strategy
+ *
+ */
 class BackTest {
+
+    /**
+     *
+     * @param strategy {Strategy} The Target Strategy To Backtest
+     * @param args {any} options and/or parameters that where supplied to the BitFoxEngine during instantiation
+     * @returns {BackTest} A instance of type Backtest
+     */
     static getBackTester(strategy, args) {
         return new BackTest(strategy, args)
     }
 
+    /**
+     *
+     * @param strategy {Strategy}
+     * @param args {any} object with Backtest and specific Parameters usually supplied through BitFoxEngine at instantiation see BitFox Class for more
+     */
     constructor(strategy, args) {
 
         this.strategy = strategy;
@@ -29,8 +47,17 @@ class BackTest {
         this.adjustForBalance = false;
     }
 
+    /**
+     *
+     * @returns {boolean} Check to see if a Trade Template has an exitOrder
+     */
     hasExitOrder(){ return this.tradeHistory.length>1 ||this.tradeHistory[this.tradeHistory.length-1].exitOrder != null;}
 
+    /**
+     *
+     * @param candles {Array}  open, high, low, close and volume values
+     * @returns {Promise<boolean>} method to start Back testing
+     */
     async backTest(candles) {
         let buff = await this.adjustForDelay(candles);
         let indexCount = 0;
@@ -90,6 +117,13 @@ class BackTest {
         this.tradeHistory[this.tradeHistory.length-1].exitOrder === null ? console.log("Ongoing Trade ",JSON.stringify(this.tradeHistory[this.tradeHistory.length-1].entryOrder,null,2)) : null;
     }
 
+    /**
+     *
+     * @param candles {Array}  open, high, low, close and volume values
+     * @returns {Promise<any[]>} This method is responsible to adjust candle and indicator data to adjust for differences indicator data length,
+     *                           and Candle Data lengths. Indicator Data with a long moving average period will usually have less Data than the original
+     *                           Candle Data Array so we leverage this method to adjust the Array lengths
+     */
 
     async adjustForDelay(candles) {
         let data = (await this.strategy.setup(candles)).getIndicator();
@@ -99,6 +133,13 @@ class BackTest {
         return candles.splice(diff, (candles.length - 1));
     }
 
+    /**
+     *
+     * @param result {{state:any, timestamp:date, custom:any, context:String}} Result coming back from the Strategy
+     * @param indexCount {Number} this is a count to keep track of Indicator and Candle Data indexes
+     * @param currentCandles {Array}  open,high,low, close and volume values
+     * @returns {Promise<void>} Processes the Strategy Response by evaluating the returned State of the Strategy
+     */
     async processResult(result, indexCount, currentCandles) {
 
         switch (result.state) {
@@ -134,6 +175,13 @@ class BackTest {
         }
     }
 
+    /**
+     *
+     * @param currentOrder {any} see ccxt documentation for order structure
+     * @param currentCandles {Array}  open, high, low, close and volume values
+     * @returns {void} Method to handle Await Short result meaning the Backtest engine has determined a Short
+     *                 position is open, and it is now waiting to identify if the short is in profit or a stop order should be placed
+     */
     handleStateAwaitShortResult(currentOrder, currentCandles) {
         let pT = this.strategy.calculateShortProfitTarget(currentOrder.price, this.profitTarget)
         let sT = (this.stopLossTarget>0) ? this.strategy.calculateShortStopTarget(currentOrder.price,this.stopLossTarget) : 0;
@@ -147,6 +195,13 @@ class BackTest {
         this.strategy.setState((isinProfitRange) ? State.STATE_TAKE_PROFIT : (isInStopLossRange) ? State.STATE_STOP_LOSS_TRIGGERED : State.STATE_AWAIT_TAKE_PROFIT)
     }
 
+    /**
+     *
+     * @param currentOrder {any} see ccxt documentation for order structure
+     * @param currentCandles {Array}  open, high, low, close and volume values
+     * @returns {void} Method to handle Await Short result meaning the Backtest engine has determined a Long
+     *                 position is open, and it is now waiting to identify if the long is in profit or a stop order should be placed
+     */
     handleStateAwaitLongResult(currentOrder, currentCandles) {
         let pT = this.strategy.calculateLongProfitTarget(currentOrder.price, this.profitTarget)
         let sT = (this.stopLossTarget>0) ? this.strategy.calculateLongStopTarget(currentOrder.price,this.stopLossTarget) : 0;
@@ -160,6 +215,12 @@ class BackTest {
         this.strategy.setState((isinProfitRange) ? State.STATE_TAKE_PROFIT : (isInStopLossRange) ? State.STATE_STOP_LOSS_TRIGGERED : State.STATE_AWAIT_TAKE_PROFIT)
     }
 
+    /**
+     *
+     * @param currentCandles {Array}  open, high, low, close and volume values
+     * @returns {void} Method to handle state Short meaning the Backtest engine has determined a short
+     *                 position can be entered
+     */
     handleStateShort(currentCandles) {
         this.adjustEntryBalance(currentCandles);
         this.strategy.setState(State.STATE_AWAIT_TAKE_PROFIT);
@@ -170,6 +231,12 @@ class BackTest {
         this.tradeDirection = 'short'
     }
 
+    /**
+     *
+     * @param currentCandles {Array}  open, high, low, close and volume values
+     * @returns {void} Method to handle state Short meaning the Backtest engine has determined a long
+     *                 position can be entered
+     */
     handleStateLong(currentCandles) {
         this.adjustEntryBalance(currentCandles);
         this.strategy.setState(State.STATE_AWAIT_TAKE_PROFIT);
@@ -180,12 +247,25 @@ class BackTest {
         this.tradeDirection = 'long';
     }
 
+    /**
+     *
+     * @param currentCandles {Array}  open, high, low, close and volume values
+     * @returns {void} Method adjust internal balance this is just to keep track of fictional funds and base amounts
+     *                 the Backtest engine will use it later to output Trade and Funding Statistics
+     */
     adjustUnrealizedBalance(currentCandles) {
         let trade = (this.tradeHistory.length > 0) ? this.tradeHistory[this.tradeHistory.length - 1] : null;
         let {funds, amount} = this.strategy.determineUnrealizedBalance(trade, currentCandles, this.args.amount);
         this.args.amount = amount;
         this.funds = funds;
     }
+
+    /**
+     *
+     * @param currentCandles {Array}  open, high, low, close and volume values
+     * @returns {void}  this is a method to recalculate entry amounts after trades have been exited ,
+     *                  the Backtest engine will use it later to output Trade and Funding Statistics
+     */
     adjustEntryBalance(currentCandles) {
         if(this.adjustForBalance){
             this.args.amount =  (this.funds / currentCandles[4]);
@@ -195,12 +275,23 @@ class BackTest {
         this.funds = funds;
     }
 
+    /**
+     *
+     * @param currentCandles {Array}  open, high, low, close and volume values
+     * @returns {void}  this method is to apply a fictional stop loss order for backtesting statistics
+     */
     applyStopLoss(currentCandles) {
         let currentTrade = this.tradeHistory[this.tradeHistory.length - 1];
         currentTrade.stopTriggered = true;
         this.completeTrade(currentCandles)
     }
 
+    /**
+     *
+     * @param currentCandles {Array}  open, high, low, close and volume values
+     * @returns {void}  this method completes ongoing trades i.e. it creates a exit order. It places a sell order when the entry was a long trade
+     *                  and buy order when the entry was a sell order
+     */
     completeTrade(currentCandles) {
         let currentTrade = this.tradeHistory[this.tradeHistory.length - 1];
         currentTrade.totalBars = this.barCount;
@@ -213,6 +304,12 @@ class BackTest {
         this.barCount = 0;
     }
 
+    /**
+     *
+     * @param currentCandles  {Array}  open, high, low, close and volume values
+     * @param currentTrade {any} A internal representation of an ongoing trade
+     * @returns {void}  this method executes a fictional buy order
+     */
     executeBuyOrder(currentCandles, currentTrade) {
         // add exit buy order
         let buyBackAmount = this.funds / currentCandles[3];
@@ -224,6 +321,12 @@ class BackTest {
         currentTrade.exitTimeStamp = new Date(currentCandles[0]);
     }
 
+    /**
+     *
+     * @param currentCandles  {Array}  open, high, low, close and volume values
+     * @param currentTrade {any} A internal representation of an ongoing trade
+     * @returns {void}  this method executes a fictional buy order
+     */
     executeSellOrder(currentTrade, currentCandles) {
         // add exit sell order
         currentTrade.exitOrder = this.mockService.marketSellOrder(this.args.symbol,  this.args.amount, currentCandles[2],);
@@ -236,4 +339,8 @@ class BackTest {
     }
 }
 
+/**
+ *
+ * @type {{BackTestEngine: BackTest}}
+ */
 module.exports = {BackTestEngine: BackTest}
