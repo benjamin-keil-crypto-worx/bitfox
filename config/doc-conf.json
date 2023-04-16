@@ -50,7 +50,7 @@
   },
   "strategies":{
     "path":"./strategies",
-    "files":["Strategy.js"],
+    "files":["Strategy.js","SuperTrend.js"],
     "outDir":"strategies"
   }
 }

@@ -9,11 +9,46 @@ const ccxt = require("ccxt");
  * This clas provides the same service as the Exchange Service but instead of placing real trades,
  * this class mocks or simulates executing exchange actions that would normally require a API Key!
  */
+
+/**
+ * @typedef {Object} requiredCredentials The Required Credentials object for Exchanges
+ * @property {String} apiKey The apiKey ,(Common auth method across exchanges)
+ * @property {String} secret the secret key, (Common auth method across exchanges)
+ * @property {any} uid Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} login Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} password Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} twofa Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} privateKey Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} walletAddress Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} token Exchange dependent see ccxt documentation or consult with your target exchange
+ */
+
+/**
+ * @typedef {Object} options HTTP configuration for API calls only tinker with this if you now what you are doing
+ * @property {String} defaultType The target for trading activities spot|futures|options|margin
+ * @property {Boolean} adjustForTimeDifference Time difference adjustments
+ * @property {Number} recvwindow the receive windows for responses!
+ */
+
+/**
+ * @typedef {Object} mockExchangeProperties  MockExchange  configuration options
+ * @property {Boolean} life MockExchange property,flag to determine if this execution context should make real trade orders
+ *
+ * @property {Boolean} Public MockExchange property, flag to make sure only public API calls are made and Private API calls are mocked
+ * @property {String} exchangeName MockExchange property, the name of the traget exchange to use
+ * @property {String} symbol MockExchange property, the name of your trading pair i.e. BTCUSDT ETHUSDT etc.
+ * @property {String} timeframe MockExchange property, the time frame to choose for Historical Data Fetching
+ *                          (Exchange dependent and Exchange must support historical Data retrieval)
+ * @property {requiredCredentials} requiredCredentials property, The Required credentials the Exchange is asking for. (Exchange dependent)
+ * @property options Exchange property, Http and Exchange  configuration
+ *
+ */
+
 class MockService {
 
     /**
      *
-     * @param args {any} The Configuration options that supplied through the BitFoxEngine
+     * @param args {mockExchangeProperties} The Configuration options that supplied through the BitFoxEngine
      * @returns {MockService}
      */
     static getService(args){
@@ -22,7 +57,7 @@ class MockService {
 
     /**
      *
-     * @param args {any} The Configuration options that supplied through the BitFoxEngine
+     * @param args {mockExchangeProperties} The Configuration options that supplied through the BitFoxEngine
      * @param exchangeService
      */
 
@@ -34,7 +69,7 @@ class MockService {
     /**
      *
      * @param exchange {String} The exchange name
-     * @param args {any} The Configuration options that supplied through the BitFoxEngine
+     * @param args {mockExchangeProperties} The Configuration options that supplied through the BitFoxEngine
      * @returns {Promise<MockService>}
      */
 
@@ -52,7 +87,7 @@ class MockService {
 
     /**
      *
-     * @returns {any} A object containing the required credentials for the given target exchange please see ccxt documentation for structure
+     * @returns {requiredCredentials} A object containing the required credentials for the given target exchange please see ccxt documentation for structure
      */
     requiredCredentials(){
         return this.exchange.requiredCredentials;
@@ -60,7 +95,7 @@ class MockService {
 
     /**
      *
-     * @returns {any} A object containing the available timeframes on the given target exchange please see ccxt documentation for structure
+     * @returns {timeframe} A object containing the available timeframes on the given target exchange please see ccxt documentation for structure
      * */
     timeFrames(){
         return this.exchange.timeFrames;
@@ -75,13 +110,13 @@ class MockService {
 
     /**
      *
-     * @returns {any} API Request Limit on the target exchange
+     * @returns {Number} API Request Limit on the target exchange
      */
     rateLimit(){ return super.rateLimit() }
 
     /**
      *
-     * @returns {any} Returns the market structure of the given exchange
+     * @returns {marketStructure} Returns the market structure of the given exchange
      */
     markets(){return super.markets() }
 
@@ -93,7 +128,7 @@ class MockService {
 
     /**
      *
-     * @returns {any} A object with available currencies on the exchange please ccxt for object structure
+     * @returns {currency} A object with available currencies on the exchange please ccxt for object structure
      */
     currencies(){return super.currencies() }
 
@@ -131,7 +166,7 @@ class MockService {
      * @param id {String} The Order ID
      * @param symbol {String} The Symbol i.e. ADAUSDT, BTCUSDT etc.
      * @param price {String} Not used not sure why this is here
-     * @returns {Promise<*>} Returns an order object see ccxt documentation for object structure
+     * @returns {Promise<order>} Returns an order object see ccxt documentation for object structure
      */
     getFilledOrder(id,symbol,price) {
         return this.mock.getClosedOrder(id,symbol,price)
@@ -140,7 +175,7 @@ class MockService {
     /**
      *
      * @param symbol {String} The Symbol i.e. ADAUSDT, BTCUSDT etc.
-     * @returns {Promise<*>} Returns All order for given symbol
+     * @returns {Promise<Array<order>>} Returns All order for given symbol
      */
     allOrders(symbol){
         return this.mock.getAllOrders(symbol);
@@ -152,7 +187,7 @@ class MockService {
      * @param amount {number} the amount to purchase
      * @param orderPrice {number} the order price to set the limit order
      * @param params {any} Optional not used yet
-     * @returns {{symbol: string, average, datetime: string, side: string, amount, price, id: string, lastTradeTimestamp: number, type: string, timeInForce: string, timestamp: number, status: string}}
+     * @returns {order}
      */
     limitBuyOrder(symbol,amount,orderPrice,params){
         return this.mock.buyOrder(symbol,'limit', orderPrice, amount);
@@ -164,7 +199,7 @@ class MockService {
      * @param amount {number} the amount to purchase
      * @param orderPrice {number} the order price to set the limit order
      * @param params {any} Optional not used yet
-     * @returns {{symbol: string, average, datetime: string, side: string, amount, price, id: string, lastTradeTimestamp: number, type: string, timeInForce: string, timestamp: number, status: string}}
+     * @returns {order}
      */
     limitSellOrder(symbol,amount,orderPrice,params){
         return this.mock.sellOrder(symbol,'limit', orderPrice, amount);
@@ -176,7 +211,7 @@ class MockService {
      * @param amount {number} the amount to purchase
      * @param orderPrice {number} the order price to set the limit order
      * @param params {any} Optional not used yet
-     * @returns {{symbol: string, average, datetime: string, side: string, amount, price, id: string, lastTradeTimestamp: number, type: string, timeInForce: string, timestamp: number, status: string}}
+     * @returns {order}
      */
     marketBuyOrder(symbol,amount,orderPrice,params){
         return  this.mock.buyOrder(symbol,'market', orderPrice, amount);

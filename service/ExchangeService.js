@@ -1,9 +1,50 @@
 const ccxt = require("ccxt");
+
+/**
+ * class ExchangeService
+ *
+ * This class is just a wrapper around the ccxt client
+ * please see: https://docs.ccxt.com/#/  for more info
+ */
+
+/**
+* @typedef {Object} requiredCredentials The Required Credentials object for Exchanges
+* @property {String} apiKey The apiKey ,(Common auth method across exchanges)
+* @property {String} secret the secret key, (Common auth method across exchanges)
+* @property {any} uid Exchange dependent see ccxt documentation or consult with your target exchange
+* @property {any} login Exchange dependent see ccxt documentation or consult with your target exchange
+* @property {any} password Exchange dependent see ccxt documentation or consult with your target exchange
+* @property {any} twofa Exchange dependent see ccxt documentation or consult with your target exchange
+* @property {any} privateKey Exchange dependent see ccxt documentation or consult with your target exchange
+* @property {any} walletAddress Exchange dependent see ccxt documentation or consult with your target exchange
+* @property {any} token Exchange dependent see ccxt documentation or consult with your target exchange
+*/
+
+/**
+ * @typedef {Object} options HTTP configuration for API calls only tinker with this if you now what you are doing
+ * @property {String} defaultType The target for trading activities spot|futures|options|margin
+ * @property {Boolean} adjustForTimeDifference Time difference adjustments
+ * @property {Number} recvwindow the receive windows for responses!
+ */
+
+/**
+ * @typedef {Object} exchangeOptions Exchange configuration options
+ * @property {Boolean} life Exchange property,flag to determine if this execution context should make real trade orders
+ *
+ * @property {Boolean} Public Exchange property, flag to make sure only public API calls are made and Private API calls are mocked
+ * @property {String} exchangeName Exchange property, the name of the traget exchange to use
+ * @property {String} symbol Exchange property, the name of your trading pair i.e. BTCUSDT ETHUSDT etc.
+ * @property {String} timeframe Exchange property, the time frame to choose for Historical Data Fetching
+ *                          (Exchange dependent and Exchange must support historical Data retrieval)
+ * @property requiredCredentials Exchange property, The Required credentials the Exchange is asking for. (Exchange dependent)
+ * @property options Exchange property, Http and Exchange  configuration
+ *
+ */
 class ExchangeService {
 
     /**
      *
-     * @param args {any} The Configuration options that supplied through the BitFoxEngine
+     * @param args {exchangeOptions} The Configuration options that supplied through the BitFoxEngine
      * @returns {ExchangeService}
      */
     static getService( args ){ return new ExchangeService(args)}
@@ -11,7 +52,7 @@ class ExchangeService {
 
     /**
      *
-     * @param args {any} The Configuration options that supplied through the BitFoxEngine
+     * @param args {exchangeOptions} The Configuration options that supplied through the BitFoxEngine
      */
     constructor( args ) {
         this.life = args.life || false;
@@ -22,7 +63,7 @@ class ExchangeService {
     /**
      *
      * @param exchange {String} The exchange name
-     * @param args {any} The Configuration options that supplied through the BitFoxEngine
+     * @param args {exchangeOptions} The Configuration options that supplied through the BitFoxEngine
      * @returns {Promise<ExchangeService>} Sets up the exchange Client and loads the market structures
      */
     async setUpClient(exchange,args){
@@ -56,7 +97,7 @@ class ExchangeService {
 
     /**
      *
-     * @returns {any} A object containing the required credentials for the given target exchange please see ccxt documentation for structure
+     * @returns {requiredCredentials} A object containing the required credentials for the given target exchange please see ccxt documentation for structure
      *
      */
     requiredCredentials(){
@@ -74,7 +115,7 @@ class ExchangeService {
 
     /**
      *
-     * @returns {any} A object containing the available timeframes on the given target exchange please see ccxt documentation for structure
+     * @returns {timeframe} A object containing the available timeframes on the given target exchange please see ccxt documentation for structure
      * */
     timeFrames(){
         return this.client.timeframes;
@@ -88,13 +129,13 @@ class ExchangeService {
 
     /**
      *
-     * @returns {any} API Request Limit on the target exchange
+     * @returns {number} API Request Limit on the target exchange
      */
     rateLimit(){ return this.client.rateLimit }
 
     /**
      *
-     * @returns {any} Returns the market structure of the given exchange
+     * @returns {marketStructure} Returns the market structure of the given exchange
      */
     markets(){return this.client.markets}
 
@@ -106,7 +147,7 @@ class ExchangeService {
 
     /**
      *
-     * @returns {any} A object with available currencies on the exchange please ccxt for object structure
+     * @returns {currency} A object with available currencies on the exchange please ccxt for object structure
      */
     currencies(){return this.client.currencies}
 
@@ -145,7 +186,7 @@ class ExchangeService {
      * @param id {String} The Order ID
      * @param symbol {String} The Symbol i.e. ADAUSDT, BTCUSDT etc.
      * @param price {String} Not used not sure why this is here
-     * @returns {Promise<*>} Returns an order object see ccxt documentation for object structure
+     * @returns {Promise<order>} Returns an order object see ccxt documentation for object structure
      */
     async getFilledOrder(id,symbol,price) {
         return await this.client.fetchOrder(id, symbol, {});
@@ -154,7 +195,7 @@ class ExchangeService {
     /**
      *
      * @param symbol {String} The Symbol i.e. ADAUSDT, BTCUSDT etc.
-     * @returns {Promise<*>} Returns All order for given symbol
+     * @returns {Promise<order>} Returns All orders for given symbol
      */
 
     async allOrders(symbol){
@@ -167,7 +208,7 @@ class ExchangeService {
      * @param amount {number} the amount to purchase
      * @param orderPrice {number} the order price to set the limit order
      * @param params {any} Optional not used yet
-     * @returns {Promise<*>} Returns an order object see ccxt documentation for object structure
+     * @returns {Promise<order>} Returns an order object see ccxt documentation for object structure
      */
     async limitBuyOrder(symbol,amount,orderPrice,params){
         return await this.client.createOrder(symbol,'limit','buy',amount,orderPrice,params);
@@ -179,7 +220,7 @@ class ExchangeService {
      * @param amount {number} the amount to purchase
      * @param orderPrice {number} the order price to set the limit order
      * @param params {any} Optional not used yet
-     * @returns {Promise<*>} Returns an order object see ccxt documentation for object structure
+     * @returns {Promise<order>} Returns an order object see ccxt documentation for object structure
      */
     async limitSellOrder(symbol,amount,orderPrice,params){
         return await this.client.createOrder(symbol,'limit','sell',amount,orderPrice,params);
@@ -190,7 +231,7 @@ class ExchangeService {
      * @param symbol {String}  The Symbol i.e. ADAUSDT, BTCUSDT etc.
      * @param amount {number} the amount to purchase
      * @param params {any} Optional not used yet
-     * @returns {Promise<*>} Returns an order object see ccxt documentation for object structure
+     * @returns {Promise<order>} Returns an order object see ccxt documentation for object structure
      */
     async marketBuyOrder(symbol,amount,params){
         return await this.client.createOrder(symbol,'market','buy',amount,params);
@@ -201,7 +242,7 @@ class ExchangeService {
      * @param symbol {String}  The Symbol i.e. ADAUSDT, BTCUSDT etc.
      * @param amount {number} the amount to purchase
      * @param params {any} Optional not used yet
-     * @returns {Promise<*>} Returns an order object see ccxt documentation for object structure
+     * @returns {Promise<order>} Returns an order object see ccxt documentation for object structure
      */
     async marketSellOrder(symbol,amount,params){
         return await this.client.createOrder(symbol,'market','sell',amount,params);
@@ -212,7 +253,7 @@ class ExchangeService {
      * @param symbol {String}  The Symbol i.e. ADAUSDT, BTCUSDT etc
      * @param limit {String} The Limit or amount of candles to fetch
      * @param params {any} Optional not used yet
-     * @returns {Promise<*>} An Array of Arrays with open,close,highs,low and volume data
+     * @returns {Promise<Array<Array<Number>>>} An Array of Arrays with open,close,highs,low and volume data
      */
 
     async fetchOrderBook(symbol, limit,params){
@@ -245,7 +286,7 @@ class ExchangeService {
     /**
      *
      * @param symbol {String}  The Symbol i.e. ADAUSDT, BTCUSDT etc
-     * @returns {Promise<*>} A Ticker object please ccxt documentation for object structure we are lazy here!
+     * @returns {Promise<ticker>} A Ticker object please ccxt documentation for object structure we are lazy here!
      */
     async fetchTicker( symbol ){
         return await this.client.fetchTicker( symbol)

@@ -11,12 +11,64 @@ const fs = require("fs");
  * This class is used by the BitFoxEngine to run Backtest against a Strategy
  *
  */
+
+/**
+ * @typedef {Object} requiredCredentials The Required Credentials object for Exchanges
+ * @property {String} apiKey The apiKey ,(Common auth method across exchanges)
+ * @property {String} secret the secret key, (Common auth method across exchanges)
+ * @property {any} uid Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} login Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} password Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} twofa Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} privateKey Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} walletAddress Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} token Exchange dependent see ccxt documentation or consult with your target exchange
+ */
+
+/**
+ * @typedef {Object} options HTTP configuration for API calls only tinker with this if you now what you are doing
+ * @property {String} defaultType The target for trading activities spot|futures|options|margin
+ * @property {Boolean} adjustForTimeDifference Time difference adjustments
+ * @property {Number} recvwindow the receive windows for responses!
+ */
+/**
+ * @typedef {Object} backTestConfiguration Engine configuration options
+ * @property {Number} amount Engine property, the base currency amount in this execution context
+ * @property {Number} profitPct Engine property,the target % for profit taking in this execution context
+ * @property {Number} stopLossPct Engine property,the stop loss target % in this execution context
+ * @property {Number} fee  Engine property,the fee % an exchange charges for purchasing and selling assets this execution context (Not fully supported yet!!)
+ * @property {Boolean} life Engine property,flag to determine if this execution context should make real trade orders
+ * @property {Number} interval Engine property,the interval in seconds the engine is using to periodically fetch OHLCV Historical Data and run execution contexts (Strategies & Alerting)
+ *
+ * @property {Boolean} Public Exchange property, flag to make sure only public API calls are made and Private API calls are mocked
+ * @property {String} exchangeName Exchange property, the name of the traget exchange to use
+ * @property {String} symbol Exchange property, the name of your trading pair i.e. BTCUSDT ETHUSDT etc.
+ * @property {String} timeframe Exchange property, the time frame to choose for Historical Data Fetching
+ *                          (Exchange dependent and Exchange must support historical Data retrieval)
+ * @property {requiredCredentials} requiredCredentials property, The Required credentials the Exchange is asking for. (Exchange dependent)
+ * @property {options} options property, Http nd Exchange  configuration
+ *
+ * @property {Boolean} backTest Backtest property, flag to indicate if this execution context should run a backtest
+ * @property {Number} requiredCandles Backtest property, the number of Historical Data Candles to fetch for each iteration
+ * @property {Number} pollRate Backtest property, number of time to pull data from exchange
+ *
+ * @property {String} sidePreference Strategy property, the trading preference lon|short/biDirectional
+ * @property {any} strategyExtras Strategy property, strategy specific arguments for custom implementations
+ *
+ *
+ * @property {String} type Alert & Notification property, the alerting mechanism or type to use (Email|Slack|Telegram)
+ * @property {String} notificationToken Alert & Notification property, the Authentication token for Notification support
+ * @property {String} telegramChatId Alert & Notification property, (Telegram specific optional parameter to sync chatId at strat upi)
+ * @property {String} emailFrom Alert & Notification property,(Email alert the email address the email is sent from)
+ * @property {String} emailTo Alert & Notification property, (Email alert the email address the email is sent to)
+ * @property {any} alertExtras Alert & Notification property, Alert specific arguments for custom implementations
+ */
 class BackTest {
 
     /**
      *
      * @param strategy {Strategy} The Target Strategy To Backtest
-     * @param args {any} options and/or parameters that where supplied to the BitFoxEngine during instantiation
+     * @param args {backTestConfiguration} options and/or parameters that where supplied to the BitFoxEngine during instantiation
      * @returns {BackTest} A instance of type Backtest
      */
     static getBackTester(strategy, args) {
@@ -26,7 +78,7 @@ class BackTest {
     /**
      *
      * @param strategy {Strategy}
-     * @param args {any} object with Backtest and specific Parameters usually supplied through BitFoxEngine at instantiation see BitFox Class for more
+     * @param args  {backTestConfiguration} object with Backtest and specific Parameters usually supplied through BitFoxEngine at instantiation see BitFox Class for more
      */
     constructor(strategy, args) {
 
