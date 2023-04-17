@@ -1109,13 +1109,13 @@ class BitFox extends Service {
 
     /**
      *
-     * @returns {timeout:Number} The Timout for HTTP request on target exchange
+     * @returns {Number} The Timout for HTTP request on target exchange
      */
     getTimeout(){ return this.timeout() }
 
     /**
      *
-     * @returns {rateLimit} The rate limit set for API call's set by target Exchange
+     * @returns {number} The rate limit set for API call's set by target Exchange
      */
     getRateLimit(){ return this.rateLimit() }
 

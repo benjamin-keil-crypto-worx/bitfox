@@ -3,7 +3,7 @@ const {TelegramSession} = require('./TelegramSession');
 
 /**
  * Class Telegram
- *
+ <pre>
  * This class is the Telegram Bot Client
  In Order to for to leverage Telegram Notifications you need to go through a few simple steps
 
@@ -17,6 +17,7 @@ const {TelegramSession} = require('./TelegramSession');
  and open your newly created Bot on Telegram and enter ``/start`` In the chat box.
 
  This will Create an internal Chat ID on the Bot side and the bot will start sending Notifications to your Chat!
+ </pre>
  *
  */
 class Telegram{

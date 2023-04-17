@@ -4,7 +4,7 @@
 
 /**
  * Class Email
- *
+ <pre>
  * This class is an Email Client that wraps around sendgrid Emailing API
  *
  * Visit this link: https://sendgrid.com/ to follow the Account Setup Instructions and optain an API Key,
@@ -12,7 +12,7 @@
  *
  * As a side note, its important that after you have created an Account and generated an API Key that you also create a verified sender email address we found
  * this link useful and helpful: https://app.sendgrid.com/settings/sender_auth/senders
- *
+ </pre>
  *
  */
 class Email{

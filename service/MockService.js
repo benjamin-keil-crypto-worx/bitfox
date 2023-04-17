@@ -5,9 +5,10 @@ const ccxt = require("ccxt");
 
 /**
  * Class Mock Service
- *
+ <pre>
  * This clas provides the same service as the Exchange Service but instead of placing real trades,
  * this class mocks or simulates executing exchange actions that would normally require a API Key!
+ </pre>
  */
 
 /**

@@ -2,6 +2,7 @@ const axios = require('axios');
 
 /**
  * Class Slack
+ <pre>
  * This class is a Slack Messaging Client thay uses axios to make an API request to create a new Slack message
  *
  * In Order to for to leverage Slack Notifications you need to the following ready to hand:
@@ -14,6 +15,7 @@ const axios = require('axios');
  * Here is a Good Guide on how to Generate a Slack Bot User you can skip the (Making Your First Request) section
  * Since BitFox will handle that for you!
  * This is a good place to learn and start setting up a Slack Account & Channel!
+ </pre>
  */
 class Slack {
 

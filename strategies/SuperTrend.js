@@ -2,10 +2,11 @@ const {Strategy} = require("./Strategy")
 
 /**
  * Class SuperTrend
- *
+<pre>>
  * This class is an example class on how one can implement Strategies with BitFox
  * The SuperTrend class signals long entries when the strategy signals a long trend and short entries when
  * strategy signals a short trend
+ </pre>
  */
 
 

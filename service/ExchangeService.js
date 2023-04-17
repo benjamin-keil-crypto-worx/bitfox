@@ -2,9 +2,10 @@ const ccxt = require("ccxt");
 
 /**
  * class ExchangeService
- *
+ <pre>
  * This class is just a wrapper around the ccxt client
  * please see: https://docs.ccxt.com/#/  for more info
+ </pre>
  */
 
 /**

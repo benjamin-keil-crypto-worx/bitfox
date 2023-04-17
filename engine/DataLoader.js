@@ -5,12 +5,13 @@ const {Log} = require("../lib/utility/Log");
 /**
  * Class Builder
  *
- *
+ <pre>
  * The DataLoader.Builder Class is just a helper class that allows you to be more in control of creating DataLoaders
  * By Using interface methods that set dedicated fields on the Engine.
  * This class is accessible through Bitfox exports and can be imported into your code base by typing
  *
  * let {DataLoaderBuilder} = require("bitfox").bitfox
+ </pre>
  */
 
 /**
