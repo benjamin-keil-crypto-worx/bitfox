@@ -1,0 +1,20 @@
+{
+  "source": {
+    "include": [ "./strategies/SuperTrend.js","./strategies/Strategy.js",
+      "./alerting/Alert.js","./alerting/Email.js","./alerting/SimplePriceAlert.js",
+      "./alerting/Slack.js","./alerting/Telegram.js","./alerting/TelegramSession.js",
+      "./engine/BackTest.js","./engine/BitFox.js","./engine/DataLoader.js", "./lib/events/EventHandler.js",
+      "./lib/utility/Log.js","./lib/utility/util.js",
+      "./lib/model/Candlesticks.js",
+      "./lib/model/Edge.js",
+      "./lib/model/IndicatorConvergence.js",
+      "./lib/model/Mock.js",
+      "./lib/model/Model.js",
+      "./lib/model/Point.js",
+      "./lib/states/States.js",
+      "./lib/indicators/Indicators.js",
+      "./service/ExchangeService.js","./service/MockService.js"
+    ],
+    "exclude": [ "node_modules/" ]
+  }
+}

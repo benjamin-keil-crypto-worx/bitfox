@@ -8,13 +8,25 @@ let Indicators = require("../lib/indicators/Indicators")
  * This class is the Base class for all current and future Strategies
  *
  */
+
+
+
+
+/**
+ * @typedef {Object} strategyConfiguration Strategy configuration options
+ * @property {String} sidePreference Strategy property, the trading preference lon|short/biDirectional
+ * @property {any} strategyExtras Strategy property, strategy specific arguments for custom implementations
+ *
+ *
+ */
+
 class Strategy {
 
     static INDICATORS = Indicators;
 
     /**
      *
-     * @param args {any} Strategy Specific arguments for set up
+     * @param args {strategyConfiguration} Strategy Specific arguments for set up
      * @constructor
      */
     constructor(args=null){
@@ -66,8 +78,8 @@ class Strategy {
     /**
      *
      * @param klineCandles {Array<Array<Number>>}
-     * @param args {any} Indicator related custom parameters that you can supply
-     * @param target {String} the class name of the Indicator we wan to use
+     * @param args {strategyConfiguration} Indicator related custom parameters that you can supply
+     * @param target {String} the class name of the Indicator we want to use
      */
     setIndicator(klineCandles, args=null, target){
         let { o,h,l,c,v, buffer } = utils.createIndicatorData(klineCandles)
@@ -87,7 +99,7 @@ class Strategy {
     /**
      *
      * @param state {String} the current state of the Strategy
-     * @param custom {any} custom paramters that you can add
+     * @param custom {any} custom parameters that you can add
      * @param context {String} the current context of this Strategy
      * @return {{custom: {}, context: null, state, timestamp: number}}
      */
@@ -131,7 +143,7 @@ class Strategy {
 
     /**
      *
-     * @param args {any} an object with Strategy required arguments
+     * @param args {strategyConfiguration} an object with Strategy required arguments
      * @param list {Array<String>} a list of keys to verify that the args instance has these keys
      * @return {Boolean}
      */

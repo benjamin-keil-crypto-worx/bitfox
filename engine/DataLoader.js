@@ -5,12 +5,24 @@ const {Log} = require("../lib/utility/Log");
 /**
  * Class Builder
  *
- *
+ <pre>
  * The DataLoader.Builder Class is just a helper class that allows you to be more in control of creating DataLoaders
  * By Using interface methods that set dedicated fields on the Engine.
  * This class is accessible through Bitfox exports and can be imported into your code base by typing
  *
  * let {DataLoaderBuilder} = require("bitfox").bitfox
+ </pre>
+ */
+
+/**
+ * @typedef {Object} dataLoaderOptions Dataloader configuration options
+ * @property {String} exchangeName Dataloader configuration, the name of the traget exchange to use
+ * @property {String} symbol Dataloader configuration, the name of your trading pair i.e. BTCUSDT ETHUSDT etc.
+ * @property {String} timeframe Dataloader configuration, the time frame to choose for Historical Data Fetching
+ *                          (Exchange dependent and Exchange must support historical Data retrieval)
+ * @property {Number} requiredCandles Dataloader configuration, the number of Historical Data Candles to fetch for each iteration
+ * @property {Number} pollRate Dataloader configuration, number of time to pull data from exchange
+ * @property {Boolean} verbose Dataloader configuration, boolean to indicate if we want verbose logging
  */
 class Builder{
     /**
@@ -112,13 +124,13 @@ class Builder{
 class DataLoader{
     /**
      * Static Factory method return a DataBuilder Instance
-     * @param args {any} the options or argument object to instantiate a DataLoader we provide a easy-to-use Builder Interface
+     * @param args  {dataLoaderOptions} the options or argument object to instantiate a DataLoader we provide a easy-to-use Builder Interface
      * @returns {DataLoader}
      */
     static getInstance(args){ return new DataLoader(args)}
 
     /**
-     * @param args {any} the options or argument object to instantiate a DataLoader we provide a easy-to-use Builder Interface
+     * @param args  {dataLoaderOptions} the options or argument object to instantiate a DataLoader we provide a easy-to-use Builder Interface
      * @returns {DataLoader}
      */
     constructor(args) {
@@ -138,7 +150,7 @@ class DataLoader{
 
     /**
      *
-     * @param args {any} the options or argument object to instantiate a DataLoader we provide a easy-to-use Builder Interface
+     * @param args dataLoaderOptions the options or argument object to instantiate a DataLoader we provide a easy-to-use Builder Interface
      * @returns {Promise<DataLoader>} Sets up the exchange Client and then returns the DataLoader instance
      */
     async setUpClient(args=null){

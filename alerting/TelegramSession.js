@@ -1,8 +1,9 @@
 /**
  * Class TelegramSession
- *
+ <pre>
  * This class is just a support class to help out with managing Chat ID's
- * so that multiple users can receive Alerts and Notifications
+ * so that multiple users can receive Alerts and Notifications.
+ </pre>
  */
 class TelegramSession {
 

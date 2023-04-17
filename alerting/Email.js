@@ -1,6 +1,10 @@
 /**
- * Class Email
  *
+ */
+
+/**
+ * Class Email
+ <pre>
  * This class is an Email Client that wraps around sendgrid Emailing API
  *
  * Visit this link: https://sendgrid.com/ to follow the Account Setup Instructions and optain an API Key,
@@ -8,7 +12,7 @@
  *
  * As a side note, its important that after you have created an Account and generated an API Key that you also create a verified sender email address we found
  * this link useful and helpful: https://app.sendgrid.com/settings/sender_auth/senders
- *
+ </pre>
  *
  */
 class Email{
@@ -24,13 +28,16 @@ class Email{
     static factory(){return new Email()}
 
     /**
+     * @module Email
      * @typedef {Object} options
      * @property {String} token  The API token to send email
+     * @property {string} to the email address to send the email to
+     * @property {string} from the email address to send email from
      */
 
     /**
      *
-     * @param options  sets the API token on the Email Client
+     * @param options.token {options} sets the API token on the Email Client
      */
     setOptions(options){
         this.sgMail = require('@sendgrid/mail');
@@ -39,13 +46,8 @@ class Email{
     }
 
     /**
-     * @typedef {Object} options
-     * @property {string} to the email address to send the email to
-     * @property {string} from the email address to send email from
-     */
-    /**
      *
-     * @param options
+     * @param options {options} The Emailing options
      * @param message {String} the text content for the email
      */
     createMessage(options,message){
