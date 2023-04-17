@@ -18,11 +18,191 @@ const {SimplePriceAlert} = require("../alerting/SimplePriceAlert");
 const {MarketMaker} = require("../strategies/MarketMaker");
 const {ThorsHammer} = require("../strategies/ThorsHammer");
 const getModels = require("../lib/model/Model").getModels();
-
+const typeDefs = require("../lib/utility/types");
 
 
 const {MfiMacd} = require("../strategies/MfiMacd");
 const utils = require("../lib/utility/util");
+
+/**
+ *  @typedef {Object} ticker A ticker is a statistical calculation with the information calculated over the past 24 hours for a specific market.
+ *  @property {String} symbol string symbol of the market ('BTC/USD', 'ETH/BTC', ...)
+ *  @property {String} info  { the original non-modified unparsed reply from exchange API },
+ *  @property {String}timestamp int (64-bit Unix Timestamp in milliseconds since Epoch 1 Jan 1970)
+ *  @property {Date} datetime ISO8601 datetime string with milliseconds
+ *  @property {Number} high highest price
+ *  @property {Number} low lowest price
+ *  @property {Number} bid current best bid (buy) price
+ *  @property {Number} bidVolume current best bid (buy) amount (may be missing or undefined)
+ *  @property {Number} ask current best ask (sell) price
+ *  @property {Number} askVolume current best ask (sell) amount (may be missing or undefined)
+ *  @property {Number} vwap  volume weighed average price
+ *  @property {Number} open opening price
+ *  @property {Number} close closing price (closing price for current period)
+ *  @property {Number} last same as `close`, duplicated for convenience
+ *  @property {Number} previousClose closing price for the previous period
+ *  @property {Number} change absolute change, `last - open`
+ *  @property {Number} percentage relative change, `(change/open) * 100`
+ *  @property {Number} average average price, `(last + open) / 2`
+ *  @property {Number} baseVolume volume of base currency traded for last 24 hours
+ *  @property {Number} quoteVolume  volume of quote currency traded for last 24 hours
+ */
+
+
+
+/**
+ * @typedef {Object} orderBook the current order book for any given trading on the exchange
+ * @property {Array<Array<number>>} bids An array of [price, amount] pairs
+ * @property {Array<Array<number>>} asks An array of [price, amount] pairs
+ * @property {String} symbol  'ETH/BTC',  a unified market symbol
+ * @property {Number} timestamp 1499280391811, Unix Timestamp in milliseconds (seconds * 1000)
+ * @property {String} datetime '2017-07-05T18:47:14.692Z', // ISO8601 datetime string with milliseconds
+ * @property {Number} nonce    1499280391811, an increasing unique identifier of the orderbook snapshot
+ */
+
+/**
+ * @typedef {Object} currency the Currency Information from exchange
+ * @property {String} id       'btc',     string literal for referencing within an exchange
+ * @property {String} code     'BTC',     uppercase unified string literal code the currency
+ * @property {String} name     'Bitcoin', string, human-readable name, if specified
+ * @property {Boolean} active    true,    boolean, currency status (tradeable and withdrawable)
+ * @property {Number} fee      0.123,     withdrawal fee, flat
+ * @property {Number} precision 8,        number of decimal digits "after the dot" (depends on exchange.precisionMode)
+ * @property {Boolean} deposit   true     boolean, deposits are available
+ * @property {Boolean} withdraw  true     boolean, withdraws are available
+ */
+
+/**
+ * @typedef marketStructure
+ *  @property {String} id       'btcusd',      string literal for referencing within an exchange
+ *  @property {String} symbol  'BTC/USD',      uppercase string literal of a pair of currencies
+ *  @property {String} base    'BTC',          uppercase string, unified base currency code, 3 or more letters
+ *  @property {String} quote   'USD',          uppercase string, unified quote currency code, 3 or more letters
+ *  @property {String} baseId  'btc',          any string, exchange-specific base currency id
+ *  @property {String} quoteId 'usd',          any string, exchange-specific quote currency id
+ *  @property {Boolean} active   true,          boolean, market status
+ *  @property {String} type    'spot',         spot for spot, future for expiry futures, swap for perpetual swaps, 'option' for options
+ *  @property {Boolean} spot     true,          whether the market is a spot market
+ *  @property {Boolean} margin   true,          whether the market is a margin market
+ *  @property {Boolean} future   false,         whether the market is a expiring future
+ *  @property {Boolean} swap     false,         whether the market is a perpetual swap
+ *  @property {Boolean} option   false,         whether the market is an option contract
+ *  @property {Boolean} contract false,         whether the market is a future, a perpetual swap, or an option
+ *  @property {String} settle   'USDT',        the unified currency code that the contract will settle in, only set if `contract` is true
+ *  @property {String} settleId 'usdt',        the currencyId of that the contract will settle in, only set if `contract` is true
+ *  @property {Number} contractSize 1,         the size of one contract, only used if `contract` is true
+ *  @property {Boolean} linear   true,          the contract is a linear contract (settled in quote currency)
+ *  @property {Boolean} inverse  false,         the contract is an inverse contract (settled in base currency)
+ *  @property {Number} expiry  1641370465121,  the unix expiry timestamp in milliseconds, undefined for everything except market['type'] `future`
+ *  @property {String} expiryDatetime '2022-03-26T00:00:00.000Z', The datetime contract will in iso8601 format
+ *  @property {Number} strike 4000,            price at which a put or call option can be exercised
+ *  @property {String} optionType 'call',      call or put string, call option represents an option with the right to buy and put an option with the right to sell
+ *  @property {Number} taker    0.002,         taker fee rate, 0.002 = 0.2%
+ *  @property {Number} maker    0.0016,        maker fee rate, 0.0016 = 0.16%
+ *  @property {Boolean} percentage true,        whether the taker and maker fee rate is a multiplier or a fixed flat amount
+ *  @property {Boolean} tierBased false,        whether the fee depends on your trading tier (your trading volume)
+ *  @property {String} feeSide 'get',          string literal can be 'get', 'give', 'base', 'quote', 'other'
+ */
+
+/**
+ * @typedef {object} fee Fee structure
+ *
+ * @property {String} currency  'BTC',  which currency the fee is (usually quote)
+ * @property {Number} cost      0.0009, the fee amount in that currency
+ * @property {Number} rate     0.002,  the fee rate (if available)
+ *
+ */
+/**
+ * @typedef {Object} order  an order from an exchange
+ * {
+ *  @property {String} id                '12345-67890:09876/54321', string
+ *  @property {String} clientOrderId     'abcdef-ghijklmnop-qrstuvwxyz', a user-defined clientOrderId, if any
+ *  @property {String} datetime          '2017-08-17 12:42:48.000',  ISO8601 datetime of 'timestamp' with milliseconds
+ *  @property {Number} timestamp          1502962946216,  order placing/opening Unix timestamp in milliseconds
+ *  @property {Number} lastTradeTimestamp 1502962956216,  Unix timestamp of the most recent trade on this order
+ *  @property {String} status      'open',       'open', 'closed', 'canceled', 'expired', 'rejected'
+ *  @property {String} symbol      'ETH/BTC',    symbol
+ *  @property {String} type        'limit',      'market', 'limit'
+ *  @property {String} timeInForce 'GTC',        'GTC', 'IOC', 'FOK', 'PO'
+ *  @property {String} side         'buy',        'buy', 'sell'
+ *  @property {Number} price'       0.06917684,  float price in quote currency (may be empty for market orders)
+ *  @property {Number} average      0.06917684,  float average filling price
+ *  @property {Number} amount       1.5,         ordered amount of base currency
+ *  @property {Number} filled       1.1,         filled amount of base currency
+ *  @property {Number} remaining    0.4,         remaining amount to fill
+ *  @property {Number} cost         0.076094524, 'filled' * 'price' (filling price used where available)
+ *  @property {Array<any>} trades     [ ... ],   a list of order trades/executions
+ *  @property {Object} info           {...}      the original unparsed order structure as is
+ *
+ */
+
+/**
+ * @typedef {Object} timeframe empty if the exchange.has['fetchOHLCV'] !== true
+ * @property {String} 1m   1minute (Exchange dependent the exchange ned to support this interval consult your exchange documentation!)
+ * @property {String} 5m   5minutes (Exchange dependent the exchange ned to support this interval consult your exchange documentation!)
+ * @property {String} 15m  15minutes (Exchange dependent the exchange ned to support this interval consult your exchange documentation!)
+ * @property {String} 30m  30minutes (Exchange dependent the exchange ned to support this interval consult your exchange documentation!)
+ * @property {String} 1h   1hour (Exchange dependent the exchange ned to support this interval consult your exchange documentation!)
+ * @property {String} 2h   2hours (Exchange dependent the exchange ned to support this interval consult your exchange documentation!)
+ * @property {String} 4h   4hours (Exchange dependent the exchange ned to support this interval consult your exchange documentation!)
+ * @property {String} 12h  12hours (Exchange dependent the exchange ned to support this interval consult your exchange documentation!)
+ * @property {String} 1d   1day (Exchange dependent the exchange ned to support this interval consult your exchange documentation!)
+ * @property {String} 1W   1week (Exchange dependent the exchange ned to support this interval consult your exchange documentation!)
+ * @property {String} 1M   1month (Exchange dependent the exchange ned to support this interval consult your exchange documentation!)
+ * @property {String} 1y   1year (Exchange dependent the exchange ned to support this interval consult your exchange documentation!)
+ */
+
+/**
+ * @typedef {Object} requiredCredentials The Required Credentials object for Exchanges
+ * @property {String} apiKey The apiKey ,(Common auth method across exchanges)
+ * @property {String} secret the secret key, (Common auth method across exchanges)
+ * @property {any} uid Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} login Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} password Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} twofa Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} privateKey Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} walletAddress Exchange dependent see ccxt documentation or consult with your target exchange
+ * @property {any} token Exchange dependent see ccxt documentation or consult with your target exchange
+ */
+
+/**
+ * @typedef {Object} options HTTP configuration for API calls only tinker with this if you now what you are doing
+ * @property {String} defaultType The target for trading activities spot|futures|options|margin
+ * @property {Boolean} adjustForTimeDifference Time difference adjustments
+ * @property {Number} recvwindow the receive windows for responses!
+ */
+/**
+ * @typedef {Object} engineOptions Engine configuration options
+ * @property {Number} amount Engine property, the base currency amount in this execution context
+ * @property {Number} profitPct Engine property,the target % for profit taking in this execution context
+ * @property {Number} stopLossPct Engine property,the stop loss target % in this execution context
+ * @property {Number} fee  Engine property,the fee % an exchange charges for purchasing and selling assets this execution context (Not fully supported yet!!)
+ * @property {Boolean} life Engine property,flag to determine if this execution context should make real trade orders
+ * @property {Number} interval Engine property,the interval in seconds the engine is using to periodically fetch OHLCV Historical Data and run execution contexts (Strategies & Alerting)
+ *
+ * @property {Boolean} Public Exchange property, flag to make sure only public API calls are made and Private API calls are mocked
+ * @property {String} exchangeName Exchange property, the name of the traget exchange to use
+ * @property {String} symbol Exchange property, the name of your trading pair i.e. BTCUSDT ETHUSDT etc.
+ * @property {String} timeframe Exchange property, the time frame to choose for Historical Data Fetching
+ *                          (Exchange dependent and Exchange must support historical Data retrieval)
+ * @property requiredCredentials Exchange property, The Required credentials the Exchange is asking for. (Exchange dependent)
+ * @property options Exchange property, Http nd Exchange  configuration
+ *
+ * @property {Boolean} backTest Backtest property, flag to indicate if this execution context should run a backtest
+ * @property {Number} requiredCandles Backtest property, the number of Historical Data Candles to fetch for each iteration
+ * @property {Number} pollRate Backtest property, number of time to pull data from exchange
+ *
+ * @property {String} sidePreference Strategy property, the trading preference lon|short/biDirectional
+ * @property {any} strategyExtras Strategy property, strategy specific arguments for custom implementations
+ *
+ *
+ * @param {String} type Alert & Notification property, the alerting mechanism or type to use (Email|Slack|Telegram)
+ * @param {String} notificationToken Alert & Notification property, the Authentication token for Notification support
+ * @param {String} telegramChatId Alert & Notification property, (Telegram specific optional parameter to sync chatId at strat upi)
+ * @param {String} emailFrom Alert & Notification property,(Email alert the email address the email is sent from)
+ * @param {String} emailTo Alert & Notification property, (Email alert the email address the email is sent to)
+ * @param {any} alertExtras Alert & Notification property, Alert specific arguments for custom implementations
+ */
 
 /**
  * Class Engine Builder
@@ -34,6 +214,8 @@ const utils = require("../lib/utility/util");
  * let {builder} = require("bitfox").bitfox
  */
 class EngineBuilder {
+
+
     /**
      *
      * @returns {EngineBuilder} A set of setters and getters to instantiate bitfox instances
@@ -417,9 +599,10 @@ class EngineBuilder {
         return BitFox.init(this.args);
     }
 
+
     /**
-     *
-     * @returns {any} returns the argument object to initialize BitFox Engines
+
+     * @returns {engineOptions}  returns the argument object to initialize BitFox Engines
      */
     getConfig(){return this.args}
 }
@@ -435,9 +618,9 @@ class BitFox extends Service {
 
     /**
      *
-     * @param args {any} the options or argument object to instantiate a BitFoxEngine we provide a easy-to-use Builder Interface
+     * @param {engineOptions} args options or argument object to instantiate a BitFoxEngine we provide a easy-to-use Builder Interface
      *                   please visit: https://benjamin-keil-crypto-worx.github.io/bitfox-wiki/#/ for more info
-     * @returns {BitFox}
+     * @returns {BitFox} BitFox engine instance
      */
     static init(args) {
        return new BitFox(args)
@@ -445,14 +628,14 @@ class BitFox extends Service {
 
     /**
      *
-     * @returns {String:Array} Array of Available Symbols
+     * @returns {Array<String>} Array of Available Symbols
      */
     static getExchanges(){
         return Service.exchanges()
     }
 
     /**
-     * @param args {any} Validates a set of arguments for Strategies This method is not yet fully supported
+     * @param args {engineOptions} Validates a set of arguments for Strategies This method is not yet fully supported
      * @returns {boolean}
      */
     static validateStrategyArgs(args){
@@ -467,7 +650,7 @@ class BitFox extends Service {
     }
 
     /**
-     * @param args {any} Validates a set of arguments for Alerting This method is not yet fully supported
+     * @param args {engineOptions} Validates a set of arguments for Alerting This method is not yet fully supported
      * @returns {boolean}
      */
     static validateAlertArgs(args){
@@ -480,7 +663,7 @@ class BitFox extends Service {
 
     /**
      *
-     * @param args {any} Initializes and sets field and objects for a BitFoxEngine
+     * @param args {engineOptions}  Initializes and sets field and objects for a BitFoxEngine
      */
     constructor(args) {
         super(args);
@@ -538,7 +721,7 @@ class BitFox extends Service {
 
     /**
      *
-     * @param args {any} Initializes the Back Testing engine with arguments provided during instantiation of a BitFoxEngine
+     * @param args  Initializes the Back Testing engine with arguments provided during instantiation of a BitFoxEngine
      */
     setTestEngine(args) {
         this.backtestEngine = (this.backtest) ? BackTestEngine.getBackTester(this.foxStrategy,args) : null;
@@ -546,7 +729,7 @@ class BitFox extends Service {
 
     /**
      *
-     * @param args {any} sets up a Strategy with arguments provided during instantiation of a BitFoxEngine
+     * @param args {engineOptions}  sets up a Strategy with arguments provided during instantiation of a BitFoxEngine
      */
     setStrategy(args) {
         let Strategy = require(`../strategies/${this.foxStrategyTarget}`).strategy;
@@ -609,7 +792,7 @@ class BitFox extends Service {
 
     /**
      *
-     * @param args {any} Apply a Notification and/or Alerting context for the Engine
+     * @param args {engineOptions} Apply a Notification and/or Alerting context for the Engine
      */
     setAlert(args) {
         // let Alert = require(`${this.foxAlertTarget}`).voxAlert;
@@ -668,7 +851,7 @@ class BitFox extends Service {
 
     /**
      *
-     * @param Bitfox Iterates over market Structures and identifies the current Market Symbol to be used in execution context!
+     * @param me {BitFox} Iterates over market Structures and identifies the current Market Symbol to be used in execution context!
      */
     applySymbol(me) {
         Object.keys(me.markets).forEach(market => {
@@ -789,7 +972,7 @@ class BitFox extends Service {
 
     /**
      *
-     * @param ticker {any} a ticker instance fetched from ccxt lib see ccxt documentation for object structure
+     * @param {ticker} ticker a ticker instance fetched from ccxt lib see ccxt documentation for object structure
      * @param me {BitFox}
      * @returns {Promise<void>} Checks if a current Short position or Trade is in profit.
      */
@@ -802,7 +985,7 @@ class BitFox extends Service {
 
     /**
      *
-     * @param ticker {any} a ticker instance fetched from ccxt lib see ccxt documentation for object structure
+     * @param {ticker} ticker a ticker instance fetched from ccxt lib see ccxt documentation for object structure
      * @param me {BitFox}
      * @returns {Promise<void>} Checks if a current Long position or Trade is in profit.
      */
@@ -815,9 +998,9 @@ class BitFox extends Service {
 
     /**
      *
-     * @param ticker  {any} a ticker instance fetched from ccxt lib see ccxt documentation for object structure
+     * @param {ticker} ticker a ticker instance fetched from ccxt lib see ccxt documentation for object structure
      * @param me {BitFox}
-     * @param oB {any} a order instance fetched from ccxt lib see ccxt documentation for object structure
+     * @param {order} oB  a order instance fetched from ccxt lib see ccxt documentation for object structure
      * @returns {Promise<void>} executes a stop loss order for a long position.
      */
     async stopLossLong(ticker, me, oB) {
@@ -829,9 +1012,9 @@ class BitFox extends Service {
 
     /**
      *
-     * @param ticker  {any} a ticker instance fetched from ccxt lib see ccxt documentation for object structure
+     * @param {ticker} ticker a ticker instance fetched from ccxt lib see ccxt documentation for object structure
      * @param me {BitFox}
-     * @param oB {any} a order instance fetched from ccxt lib see ccxt documentation for object structure
+     * @param {order} oB a order instance fetched from ccxt lib see ccxt documentation for object structure
      * @returns {Promise<void>} executes a stop loss order for a short position.
      */
     async stopLossShort(ticker, me, oB) {
@@ -844,9 +1027,9 @@ class BitFox extends Service {
 
     /**
      *
-     * @param ticker  {any} a ticker instance fetched from ccxt lib see ccxt documentation for object structure
+     * @param {ticker} ticker a ticker instance fetched from ccxt lib see ccxt documentation for object structure
      * @param me {BitFox}
-     * @param oB {any} a order instance fetched from ccxt lib see ccxt documentation for object structure
+     * @param {order} oB a order instance fetched from ccxt lib see ccxt documentation for object structure
      * @returns {Promise<void>} Executes a sell order for long that has reached its maturity.
      */
     async takeProfitLong(ticker, me, oB) {
@@ -858,9 +1041,9 @@ class BitFox extends Service {
 
     /**
      *
-     * @param ticker  {any} a ticker instance fetched from ccxt lib see ccxt documentation for object structure
+     * @param {ticker} ticker a ticker instance fetched from ccxt lib see ccxt documentation for object structure
      * @param me {BitFox}
-     * @param oB {any} a order instance fetched from ccxt lib see ccxt documentation for object structure
+     * @param {order} oB a order instance fetched from ccxt lib see ccxt documentation for object structure
      * @returns {Promise<void>} Executes a sell order for long that has reached its maturity.
      */
     async takeProfitShort(ticker, me, oB) {
@@ -926,19 +1109,19 @@ class BitFox extends Service {
 
     /**
      *
-     * @returns {timeout:Number} The Timout for HTTP request on target exchange
+     * @returns {Number} The Timout for HTTP request on target exchange
      */
     getTimeout(){ return this.timeout() }
 
     /**
      *
-     * @returns {rateLimit} The rate limit set for API call's set by target Exchange
+     * @returns {number} The rate limit set for API call's set by target Exchange
      */
     getRateLimit(){ return this.rateLimit() }
 
     /**
      *
-     * @returns {markets} the Market Structures on target Exchange
+     * @returns {marketStructure}  the Market Structures on target Exchange
      */
     getMarkets(){return this.markets()}
 
@@ -950,7 +1133,7 @@ class BitFox extends Service {
 
     /**
      *
-     * @returns {currencies} The available currencies on the target exchange
+     * @returns {currency} The available currencies on the target exchange
      */
     getCurrencies(){return this.currencies()}
 }

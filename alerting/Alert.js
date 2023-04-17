@@ -7,10 +7,10 @@ const Indicators = require("../lib/indicators/Indicators")
 
 /**
  * Class Alert
- *
+ <pre>
  * This Class is the Factory Class for Email,Telegram & Slack Notification Instances
  * It also acts as the base Class for all Alerting instances that can be executed just like Strategies
- *
+ </pre>
  */
 class Alert {
 

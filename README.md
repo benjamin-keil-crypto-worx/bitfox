@@ -27,7 +27,8 @@ This application is under heavy development and in beta nothing has been tested.
 Use this tool and library at your own risk!
 </p>
 <h2>Support BitFox Development </h2>
-Bitcoin address: bc1qs6rvwnx0wlrqlncm90kk7mu0xs6980t85avfll
+<code><span style="color:black">Bitcoin address: </span><span style="color:darkorange"> bc1qs6rvwnx0wlrqlncm90kk7mu0xs6980t85avfll</span></code>
+
 
 <h3> Current feature list:
 </h3>

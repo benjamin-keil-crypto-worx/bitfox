@@ -2,11 +2,11 @@ const {Alert} = require("./Alert")
 
 /**
  * Class SimplePriceAlert
- *
+ <pre>
  * This class is just a Demonstration of how you could implement custom Alert processes
  *
  * It will Alert users of this class to price simple alerts based on provided conditions
- *
+ </pre>
  *
  */
 class SimplePriceAlert extends Alert{
