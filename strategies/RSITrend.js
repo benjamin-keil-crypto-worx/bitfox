@@ -17,7 +17,7 @@ class RSITrend extends Strategy{
 
 
     /**
-     * @typedef {Object} extras Engine configuration options
+     * @typedef {Object} rsiTrendExtras Engine configuration options
      * @property {Number} fastPeriod Strategy property, the fast period to use for moving average
      * @property {Number} slowPeriod Strategy property,  the slow period to use for moving average
      * @property {Number} rsiPeriod Strategy property, the rsi period
@@ -27,7 +27,7 @@ class RSITrend extends Strategy{
     /**
      * @typedef {Object} rsiTrendConfig Strategy configuration options
      * @property {number} sidePreference Strategy property, the trading preference long|short/biDirectional
-     * @property {extras} strategyExtras Strategy property, strategy specific arguments for custom implementations
+     * @property {rsiTrendExtras} strategyExtras Strategy property, strategy specific arguments for custom implementations
      */
 
     /**

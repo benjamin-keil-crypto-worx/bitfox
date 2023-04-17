@@ -29,7 +29,7 @@ const {Strategy} = require("./Strategy")
  */
 class MarketMaker extends Strategy{
     /**
-     * @typedef {Object} extras Engine configuration options
+     * @typedef {Object} marketMakerExtras Engine configuration options
      * @property {Number} stepThrough Strategy property, flag to indicate whether we should step through the order book
      * @property {Number} steps the index pointing to the bids and asks prices in the order book to place sell/buy order
      * @property {String} accumulate Strategy property, the accumulation preference  base|quote
@@ -41,7 +41,7 @@ class MarketMaker extends Strategy{
     /**
      * @typedef {Object} marketMakerConfig Strategy configuration options
      * @property {number} sidePreference Strategy property, the trading preference long|short/biDirectional
-     * @property {extras} strategyExtras Strategy property, strategy specific arguments for custom implementations
+     * @property {marketMakerExtras} strategyExtras Strategy property, strategy specific arguments for custom implementations
      */
     /**
      *

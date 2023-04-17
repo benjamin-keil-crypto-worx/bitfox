@@ -30,7 +30,7 @@ class Bollinger extends Strategy{
     static ATR = Strategy.INDICATORS.AtrIndicator.className;
 
     /**
-     * @typedef {Object} extras Strategy configuration options
+     * @typedef {Object} bollingerExtras Strategy configuration options
      * @property {Number} lookBack Strategy property, the period to look back on previous candles
      * @property {Number} probabilityFactorLong Strategy property, the needed probability factor to enter a long i.e. 0.6 (60%)
      * @property {Number} probabilityFactorShort Strategy property, the needed probability factor to enter a short i.e 0.6 (60%)
@@ -41,7 +41,7 @@ class Bollinger extends Strategy{
     /**
      * @typedef {Object} bollingerConfig Strategy configuration options
      * @property {number} sidePreference Strategy property, the trading preference lon|short/biDirectional
-     * @property {extras} strategyExtras Strategy property, strategy specific arguments for custom implementations
+     * @property {bollingerExtras} strategyExtras Strategy property, strategy specific arguments for custom implementations
      */
 
     /**

@@ -14,7 +14,7 @@ const {Strategy} = require("./Strategy")
 
 class SuperTrend extends Strategy{
     /**
-     * @typedef {Object} extras Engine configuration options
+     * @typedef {Object} superTrendExtras Engine configuration options
      * @property {Number} multiplier Strategy property, the multiplier to use determine trend direction changes
      * @property {Number} period Strategy property, the period to use for moving average
      *
@@ -24,7 +24,7 @@ class SuperTrend extends Strategy{
     /**
      * @typedef {Object} superTrendConfig Strategy configuration options
      * @property {number} sidePreference Strategy property, the trading preference lon|short/biDirectional
-     * @property {extras} strategyExtras Strategy property, strategy specific arguments for custom implementations
+     * @property {superTrendExtras} strategyExtras Strategy property, strategy specific arguments for custom implementations
      */
 
     /**

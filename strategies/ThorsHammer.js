@@ -16,7 +16,7 @@ let {Strategy} = require("./Strategy");
 class ThorsHammer extends Strategy {
 
     /**
-     * @typedef {Object} extras Engine configuration options
+     * @typedef {Object} thorsHammerExtras Engine configuration options
      * @property {Number} periodFast Strategy property, the fast period to use for moving average
      * @property {Number} periodSlow Strategy property,  the slow period to use for moving average
      *
@@ -25,7 +25,7 @@ class ThorsHammer extends Strategy {
     /**
      * @typedef {Object} thorsHammerConfig Strategy configuration options
      * @property {number} sidePreference Strategy property, the trading preference long|short/biDirectional
-     * @property {extras} strategyExtras Strategy property, strategy specific arguments for custom implementations
+     * @property {thorsHammerExtras} strategyExtras Strategy property, strategy specific arguments for custom implementations
      */
 
     static EMA= Strategy.INDICATORS.EMAIndicator.className;
