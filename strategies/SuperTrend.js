@@ -57,6 +57,11 @@ class SuperTrend extends Strategy{
      * @return {String} the string representation of the current state in the Strategy
      */
     getState(){ return this.state}
+
+    /**
+     *
+     * @param klineCandles {Array<Array<Number>>} Sets up the Strategy with Indicator Data and Historical Candle data
+     */
     async setup(clineCandles){
         this.setIndicator(clineCandles,{multiplier:this.args.multiplier || 3,period:this.args.period || 7},this.indicators.SuperTrendIndicator.className);
         return this;
