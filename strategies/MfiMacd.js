@@ -1,9 +1,37 @@
 const {Strategy} = require("./Strategy")
 
+/**
+ * Class MfiMacd
+ *
+ <pre>
+ * This class is a strategy example based on a  MFI and Macd confirmation flow
+ *
+ * The Strategy determines long trades by checking if the MFI has reach below 20 if it has the state of the strategy is set to await a MACD histogram cross
+ * above zero and then enters a long position
+ *
+ * The Strategy determines short trades by checking if the MFI has reach above 80 if it has, the state of the strategy is set to await a MACD histogram cross
+ * below zero and then enters a short position
+ </pre>
+ */
 class MfiMacd extends Strategy {
+
+    /**
+     * @typedef {Object} mfiMacdConfiguration Strategy configuration options
+     * @property {number} sidePreference Strategy property, the trading preference long|short/biDirectional
+     */
+    /**
+     *
+     * @param args {mfiMacdConfiguration} Strategy configuration options
+     * @return {MfiMacd}
+     */
     static init(args){
         return new MfiMacd( args);
     }
+
+    /**
+     *
+     * @param args {mfiMacdConfiguration} Strategy configuration options
+     */
 
     constructor(args) {
         super(args);
@@ -12,9 +40,22 @@ class MfiMacd extends Strategy {
         this.setContext("MfiMacd")
     }
 
+    /**
+     *
+     * @param state {String}  The Current State of the Strategy execution
+     */
     setState(state){ this.state = state; }
+
+    /**
+     *
+     * @return {String} The Current State of the Strategy execution
+     */
     getState(){ return this.state}
 
+    /**
+     *
+     * @param klineCandles {Array<Array<Number>>} Sets up the Strategy with Indicator Data and Historical Candle data
+     */
     async setup(klineCandles){
         this.setIndicator(klineCandles,{},this.indicators.MacdIndicator.className);
         this.macd = this.getIndicator();
@@ -25,12 +66,28 @@ class MfiMacd extends Strategy {
         return this;
     }
 
+    /**
+     *
+     * @param event {String} The Event Name
+     * @param data {any} some arbitrary data to attach to the event
+     */
     fireEvent(event,data){
         this.eventHandler.fireEvent(event,data);
     }
 
+    /**
+     *
+     * @return {Array<any>} returns an Indicator Data Array
+     */
     getIndicator(){return super.getIndicator()}
 
+    /**
+     *
+     * @param {number} _index
+     * @param {boolean} isBackTest
+     * @param {ticker} ticker
+     * @return {Promise<{custom: {}, context: null, state, timestamp: number}>}
+     */
 
     async run(_index=0, isBackTest=false, ticker=null){
         // You don't really need to change this if unless you have something else in mind
@@ -76,6 +133,13 @@ class MfiMacd extends Strategy {
         return this.getStrategyResult(this.state,{});
     }
 
+    /**
+     *
+     * @param {number} currentPrice - the current price of the asset
+     * @param {number} mfi  - The mfi indicator data
+     * @param {number} macd - The macd indicator data
+     * @return {{triggerStop: boolean, enterLong: boolean, enterShort: boolean}} evaluates indicator and returns boolean to determine if long,short or stop orders should be triggered
+     */
     evaluateIndicatorData(currentPrice,mfi,macd){
 
         if(this.state === this.states.STATE_AWAIT_CROSS_UP){
@@ -105,5 +169,8 @@ class MfiMacd extends Strategy {
     }
 }
 
-// Optional export of ths class
+/**
+ *
+ * @type {{MfiMacd: MfiMacd}}
+ */
 module.exports = {MfiMacd:MfiMacd}

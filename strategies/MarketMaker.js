@@ -1,11 +1,61 @@
 const {Strategy} = require("./Strategy")
 
+/**
+ * Class MarketMaker
+ *
+ <pre>
+ * This class is a simple implementation for a Market Maker Strategy
+ *
+ * This class is a little Different from all other strategy implementations as it is
+ * an independent execution strategy, Independent strategies signal to the BitFox Engine that this strategy does not require
+ * the Engine to manage Trade entries and exits it is handled from within the strategy itself.
+ *
+ * The MarketMaker strategy signal to the BitFox engine that is a independent strategy by always returning
+ * this.states.STATE_CONTEXT_INDEPENDENT state back to the calling engine.
+ *
+ * The MarketMakerStrategy is configured the following way
+ *
+ * 1. you can set a flag stepThrough this would indicate that you don't want to calculate a spread value
+ *    to calculate entry end exit order but would like t step through the order book by a given number and se the values at the order book's index
+ * 2. If you don't want to stepThrough the entry and exit orders placed at the spread of the order book
+ * 3. The strategy allows you to set the accumulation mode i.e. whether you like to accumulate base or quote currency,
+ *    in the case of base accumulation only short orders are prioritised,
+ *    a sell order is placed, the strategy waits until the order is filled and only then places the buy-back order
+ *    in the case of quote accumulation only long orders are prioritised,
+ *    a buy order is placed, the strategy waits until the order is filled and only then places the sell-back order
+ *
+ *
+ </pre>
+ */
 class MarketMaker extends Strategy{
+    /**
+     * @typedef {Object} marketMakerExtras Engine configuration options
+     * @property {Number} stepThrough Strategy property, flag to indicate whether we should step through the order book
+     * @property {Number} steps the index pointing to the bids and asks prices in the order book to place sell/buy order
+     * @property {String} accumulate Strategy property, the accumulation preference  base|quote
+     * @property {Number} spread Strategy property,  a calculated distance between an ask and bid price
 
+     *
+     */
+
+    /**
+     * @typedef {Object} marketMakerConfig Strategy configuration options
+     * @property {number} sidePreference Strategy property, the trading preference long|short/biDirectional
+     * @property {marketMakerExtras} strategyExtras Strategy property, strategy specific arguments for custom implementations
+     */
+    /**
+     *
+     * @param args {marketMakerConfig} - Strategy configuration options
+     * @return {MarketMaker}
+     */
     static init(args) {
         return new MarketMaker(args);
     }
 
+    /**
+     *
+     * @param args {marketMakerConfig} - Strategy configuration options
+     */
     constructor(args) {
         super(args);
         this.setContext("MarketMaker")
@@ -23,16 +73,38 @@ class MarketMaker extends Strategy{
         this.nextOrder = {};
     }
 
+    /**
+     *
+     * @param {ExchangeService} exchange The client to allow us to make API requests to the exchange
+     */
     setExchange(exchange) {
         this.exchange = exchange;
     }
+
+    /**
+     *
+     * @param klineCandles {Array<Array<Number>>} Sets up the Strategy with Indicator Data and Historical Candle data
+     */
     async setup(klineCandles){
 
     }
+
+    /**
+     *
+     * @return {Promise<MarketMaker>} Sets up the Exchange client and loads the market structure
+     */
     async setUpClient(){
         await this.exchange.setUpClient(this.params.exchangeName,this.params);
         return this;
     }
+
+    /**
+     *
+     * @param {number} _index
+     * @param {boolean} isBackTest
+     * @param {ticker} ticker
+     * @return {Promise<{custom: {}, context: null, state, timestamp: number}>}
+     */
     async run(_index=0, isBackTest=false, ticker=null) {
         try{
             const orderBook = await this.exchange.fetchOrderBook(`${this.symbol}`, 25, {});
@@ -96,6 +168,13 @@ class MarketMaker extends Strategy{
         this.buyOrder = null;
     }
 
+    /**
+     *
+     * @param {Number} bidPrice the current identified ask price
+     * @param {Number} askPrice the current identified bid price
+     * @return {Promise<void>} executes a limit sell order and stores the sell order in the strategy scope,
+     *                         creates a callback function to execute a limit buy order soon as the sell order has ben filled
+     */
     async handleBaseAccumulationEntryFlow(bidPrice, askPrice) {
         let me = this;
         this.sellOrder = await this.exchange.limitSellOrder(this.symbol, this.amount, askPrice, {});
@@ -104,6 +183,14 @@ class MarketMaker extends Strategy{
         this.startTracking.entryFill = true;
 
     }
+
+    /**
+     *
+     * @param {Number} bidPrice the current identified ask price
+     * @param {Number} askPrice the current identified bid price
+     * @return {Promise<void>} executes a limit buy order and stores the buy order in the strategy scope,
+     *                         creates a callback function to execute a limit sell order soon as the buy order has ben filled
+     */
     async handleQuoteAccumulationEntryFlow(bidPrice, askPrice) {
         let me = this;
         this.buyOrder = await this.exchange.limitBuyOrder(this.symbol, this.amount, askPrice, {});
@@ -112,21 +199,50 @@ class MarketMaker extends Strategy{
         this.startTracking.entryFill = true;
     }
 
+    /**
+     *
+     * @return {boolean}  helper function to determine if the current accumulation mode is quote currency
+     */
     isQuoteAccumulation(){return this.accumulate === 'quote'}
+
+    /**
+     *
+     * @return {boolean}  helper function to determine if the current accumulation mode is base currency
+     */
     isBaseAccumulation(){return this.accumulate === 'base'}
 
+    /**
+     *
+     * @param bidPrice the current identified bidPrice
+     * @return {number} calculates an amount for a buy order
+     */
 
     getExitBuyOrderMount(bidPrice){
         let spend = (this.sellOrder.price * this.sellOrder.amount);
         return spend / bidPrice;
     }
+
+    /**
+     *
+     * @param askPrice the current identified askPrice
+     * @return {number} calculates an amount for a sell order
+     */
     getExitSellOrderAmount(askPrice){
         let spend = (this.buyOrder.price * this.sellOrder.amount);
-        spend / bidPrice; 
+        return spend / askPrice;
     }
+
+    /**
+     *
+     * @return {boolean} helper function to identify if this strategy has orders cached
+     */
     noOrdersPlaced() {
         return this.sellOrder === null && this.buyOrder === null;
     }
 }
 
+/**
+ *
+ * @type {{MarketMaker: MarketMaker}}
+ */
 module.exports = {MarketMaker: MarketMaker}

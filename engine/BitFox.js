@@ -18,8 +18,7 @@ const {SimplePriceAlert} = require("../alerting/SimplePriceAlert");
 const {MarketMaker} = require("../strategies/MarketMaker");
 const {ThorsHammer} = require("../strategies/ThorsHammer");
 const getModels = require("../lib/model/Model").getModels();
-const typeDefs = require("../lib/utility/types");
-
+const {ProcessManager} = require("../engine/ProcessManager");
 
 const {MfiMacd} = require("../strategies/MfiMacd");
 const utils = require("../lib/utility/util");
@@ -678,7 +677,6 @@ class BitFox extends Service {
         this.takeProfitPct = args.profitPct;
         this.stopLossTarget = args.stopLossPct || 0;
         this.useLimitOrder = args.useLimitOrder || false;
-        this.foxStrategyTarget = args.strategy;
         this.backtest = args.backtest || false;
         this.params["public"]  = args.backtest || args.public || false;
 
@@ -690,18 +688,12 @@ class BitFox extends Service {
         this.backtestEngine =null;
         this.isStrategy = false;
         this.strategySetupRequired = true;
-        if(args.token) {
+        this.runAsProcess = false;
+        if(args.notificationToken) {
             this.alerter = new Alert(args);
             this.notify = true;
         }
-        this.mockExchange = (!args.life) ? MockService.getService(args, this.getContext()) : null;
-        if(this.foxStrategyTarget !== undefined){
-            this.setStrategy(args);
-            this.setTestEngine(args);
-            this.isStrategy = true;
-        }else{
-            this.setAlert(args);
-        }
+        this.mockExchange = (!args.life) ? MockService.getService(args) : null;
         this.eventHandler = EventHandler.getEventHandler();
     }
 
@@ -727,14 +719,6 @@ class BitFox extends Service {
         this.backtestEngine = (this.backtest) ? BackTestEngine.getBackTester(this.foxStrategy,args) : null;
     }
 
-    /**
-     *
-     * @param args {engineOptions}  sets up a Strategy with arguments provided during instantiation of a BitFoxEngine
-     */
-    setStrategy(args) {
-        let Strategy = require(`../strategies/${this.foxStrategyTarget}`).strategy;
-        this.foxStrategy = Strategy.init(args);
-    }
 
     /**
      *
@@ -790,6 +774,17 @@ class BitFox extends Service {
         this.isStrategy = true;
     }
 
+
+    /**
+     *
+     * @param {ProcessManager} processManager The Process Manager
+     */
+    setAsProcess(processManager){
+        processManager.setProcessTask(this)
+        this.runAsProcess  = true;
+        processManager.scheduleProcess();
+    }
+
     /**
      *
      * @param args {engineOptions} Apply a Notification and/or Alerting context for the Engine
@@ -815,38 +810,50 @@ class BitFox extends Service {
         if (this.backtest) {
             await this.runBackTest(klineCandles);
         } else {
-            setInterval(async () => {
+            if(this.runAsProcess){
                 let me = this;
-                let ticker = null;
-                if(this.strategySetupRequired){
-                    klineCandles = await this.fetchOHLCV(this.symbol, this.timeframe);
-                    ticker = await me.fetchTicker(me.symbol);
-                    await me.foxStrategy.setup(klineCandles)
-                }else{
-                    ticker = {last:0}
-                }
-                
-                let result =  await me.foxStrategy.run(0,false,ticker.last);
-                me.eventHandler.fireEvent("onStrategyResponse",result);
-                if(result && result.state === State.STATE_CONTEXT_INDEPENDENT){
-                    this.strategySetupRequired = false;
-                    await me.foxStrategy.run(0,false,ticker.last);
-                }
-                if(result && [State.STATE_ENTER_SHORT,State.STATE_ENTER_LONG].includes(result.state)){
-                    try{
-                        if(me.notify && me.alerter !== null){ 
-                            await me.alerter.notify(me.params,`BitFox Strategy Alert ${me.params.symbol} \n State:${result.state} Context: ${result.context || "Strategy"}`)
-                        }
-                    }
-                   catch(error){
-                        Log.error(error);
-                        me.eventHandler.fireEvent("onError", error);
-                    }
-                }
-                if(!me.notifyOnly) {await this.executeStrategyContext(result, me)}
+                klineCandles = await me.runExecutionContext(klineCandles);
+            }else{
+                setInterval(async () => {
+                    let me = this;
+                    klineCandles = await me.runExecutionContext(klineCandles);
+                }, Number(me.interval) * 1000);
+            }
 
-            }, Number(me.interval) * 1000);
         }
+    }
+
+    async runExecutionContext(klineCandles) {
+        let me = this;
+        let ticker = null;
+        if (this.strategySetupRequired) {
+            klineCandles = await this.fetchOHLCV(this.symbol, this.timeframe);
+            ticker = await me.fetchTicker(me.symbol);
+            await me.foxStrategy.setup(klineCandles)
+        } else {
+            ticker = {last: 0}
+        }
+
+        let result = await me.foxStrategy.run(0, false, ticker.last);
+        me.eventHandler.fireEvent("onStrategyResponse", result);
+        if (result && result.state === State.STATE_CONTEXT_INDEPENDENT) {
+            this.strategySetupRequired = false;
+            await me.foxStrategy.run(0, false, ticker.last);
+        }
+        if (result && [State.STATE_ENTER_SHORT, State.STATE_ENTER_LONG].includes(result.state)) {
+            try {
+                if (me.notify && me.alerter !== null) {
+                    await me.alerter.notify(me.params, `BitFox Strategy Alert ${me.params.symbol} \n State:${result.state} Context: ${result.context || "Strategy"}`)
+                }
+            } catch (error) {
+                Log.error(error);
+                me.eventHandler.fireEvent("onError", error);
+            }
+        }
+        if (!me.notifyOnly) {
+            await this.executeStrategyContext(result, me)
+        }
+        return klineCandles;
     }
 
     /**
@@ -1142,6 +1149,7 @@ module.exports = {
     BitFoxEngine: BitFox,
     ExchangeService:Service,
     MockService:MockService,
+    ProcessManager:ProcessManager,
     Strategy:Strategy,
     SuperTrend:SuperTrend,
     RSITrend:RSITrend,
@@ -1156,4 +1164,5 @@ module.exports = {
     getModels:getModels,
     DataLoaderBuilder:DataLoaderBuilder,
     builder:EngineBuilder.builder
+
 }

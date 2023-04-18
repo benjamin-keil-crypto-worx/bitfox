@@ -1,44 +1,74 @@
 const {Strategy} = require("./Strategy")
 const utils = require("../lib/utility/util");
+
+/**
+ * Class SmartAcumulate
+ *
+ <pre>
+ * This class is a simple example Strategy that uses floor pivot resistance points do identify
+ * possible trade entries and exits.
+ *
+ </pre>
+ */
 class SmartAccumulate extends Strategy{
 
     static WOODIES = "Woodies"
+
+    /**
+     *
+     * @param args {strategyConfiguration} - the strategies configuration parameters
+     * @return {SmartAccumulate}
+     */
     static init(args){
         return new SmartAccumulate(args);
     }
+
+    /**
+     *
+     * @param args {strategyConfiguration} - the strategies configuration parameters
+     */
     constructor(args) {
         super(args);
         this.setContext("SmartAccumulate")
-        if(this.args.usage) {
-            this.usage({
-                "vox": "SmartAccumulateVox",
-                "exchange": "bybit",
-                "symbol": "ADAUSDT",
-                "accumulate": "quote",
-                "amount": 50,
-                "profitPct": 0.1,
-                "fee": 0.01,
-                "key": "FAKE_KEY",
-                "secret": "FAKE_KEY",
-                "life": true
-            });
-        }
         this.floorPivots = null;
         this.currPivot = null;
         this.sidePreference = args.sidePreference || 'long';
-
     }
 
+    /**
+     *
+     * @param state {String}  The Current State of the Strategy execution
+     */
     setState(state){ this.state = state; }
+    /**
+     *
+     * @return {String} The Current State of the Strategy execution
+     */
     getState(){ return this.state}
 
+    /**
+     *
+     * @param klineCandles {Array<Array<Number>>} Sets up the Strategy with Indicator Data and Historical Candle data
+     */
     async setup(klineCandles){
         this.setIndicator(klineCandles,{},SmartAccumulate.WOODIES )
         this.floorPivots = this.getIndicator();
         return this;
     }
 
+    /**
+     *
+     * @return {Array<any>} returns an Indicator Data Array
+     */
     getIndicator(){ return super.getIndicator()}
+
+    /**
+     *
+     * @param {number} _index
+     * @param {boolean} isBackTest
+     * @param {ticker} ticker
+     * @return {Promise<{custom: {}, context: null, state, timestamp: number}>}
+     */
     async run(_index=0, isBackTest=false, ticker=null){
 
 
@@ -61,4 +91,8 @@ class SmartAccumulate extends Strategy{
     }
 }
 
+/**
+ *
+ * @type {{SmartAccumulate: SmartAccumulate}}
+ */
 module.exports = {SmartAccumulate:SmartAccumulate}
