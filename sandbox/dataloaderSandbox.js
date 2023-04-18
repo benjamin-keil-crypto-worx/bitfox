@@ -40,7 +40,7 @@ function getEntryPoint(pointA, buffer, i) {
     return pointA;
 }
 
-let dataLoader = dataLoaderEngineBuilder()
+let dataLoader = DataLoaderBuilder()
     .setExchangeName("bybit")
     .setPollRate(10)
     .setRequiredCandles(200)
@@ -389,7 +389,7 @@ const test = async () =>{
     let { o,h,l,c,v, buffer } = utils.createIndicatorData(data)
     Strategy.INDICATORS.PatternRecognitionIndicator.getPatterns().forEach( key =>{
             if(key !== "getPatterns"){
-                indicatorData[key] = Strategy.INDICATORS.PatternRecognitionIndicator[key](o,h,l,c,v);
+                console.log(`Pattern ${key} `,indicatorData[key] = Strategy.INDICATORS.PatternRecognitionIndicator[key](o,h,l,c,v));
             }
     });
 
