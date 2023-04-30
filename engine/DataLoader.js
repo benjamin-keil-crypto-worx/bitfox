@@ -1,7 +1,7 @@
 let ExchangeService = require("../service/ExchangeService").Service;
 const utils = require("../lib/utility/util");
 const {Log} = require("../lib/utility/Log");
-
+const {Errors} = require("../errors/Errors");
 /**
  * Class Builder
  *
@@ -166,6 +166,9 @@ class DataLoader{
         let dates = [];
         let lastDate = 0;
         let run =true;
+        if(!this.exchange.has("fetchOHLCV")){
+            Errors.UnsupportedExchangeOptionError(`Unsupported Operation fetchOHLCV ${this.exchangeName} does not support Historical Candle Data`)
+        }
 
         while (this.cnt < this.pollRate && run ) {
             let setKey = utils.getPreviousCandleDateFromTimeFrame(this.timeframe, this.candleDate).setKey;

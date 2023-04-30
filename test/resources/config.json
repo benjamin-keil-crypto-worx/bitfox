@@ -1,0 +1,27 @@
+
+{
+"useLimitOrder":{"validate":[{"type":"string","value":"test"}, {"type":"number", "value":100} , {"type":"object", "value":{"test":"test"}}],"expected":"boolean", "target":"useLimitOrder" },
+"backtest":{"validate":[{"type":"string","value":"test"}, {"type":"number", "value":100} , {"type":"object", "value":{"test":"test"}}],"expected":"boolean","target":"backtest" },
+"public":{"validate":[{"type":"string","value":"test"}, {"type":"number", "value":100} , {"type":"object", "value":{"test":"test"}}],"expected":"boolean","target":"_public" },
+"life":{"validate":[{"type":"string","value":"test"}, {"type":"number", "value":100} , {"type":"object", "value":{"test":"test"}}],"expected":"boolean","target":"life" },
+
+"exchange":{"validate":[{"type":"boolean","value":true}, {"type":"number", "value":100} , {"type":"object", "value":{"test":"test"}}],"expected":"string","target":"exchange" },
+"symbol":{"validate":[{"type":"boolean","value":true}, {"type":"number", "value":100} , {"type":"object", "value":{"test":"test"}}],"expected":"string","target":"symbol" },
+"timeframe":{"validate":[{"type":"boolean","value":true}, {"type":"number", "value":100} , {"type":"object", "value":{"test":"test"}}],"expected":"string","target":"timeframe" },
+"key":{"validate":[{"type":"boolean","value":true}, {"type":"number", "value":100} , {"type":"object", "value":{"test":"test"}}],"expected":"string","target":"key" },
+"secret":{"validate":[{"type":"boolean","value":true}, {"type":"number", "value":100} , {"type":"object", "value":{"test":"test"}}],"expected":"string","target":"secret" },
+"sidePreference":{"validate":[{"type":"boolean","value":true}, {"type":"number", "value":100} , {"type":"object", "value":{"test":"test"}}],"expected":"string", "target":"sidePreference" },
+"notificationToken":{"validate":[{"type":"boolean","value":true}, {"type":"number", "value":100} , {"type":"object", "value":{"test":"test"}}],"expected":"string","target":"token" },
+"telegramChatId":{"validate":[{"type":"boolean","value":true}, {"type":"number", "value":100} , {"type":"object", "value":{"test":"test"}}],"expected":"string","target":"chatId" },
+"emailFrom":{"validate":[{"type":"boolean","value":true}, {"type":"number", "value":100} , {"type":"object", "value":{"test":"test"}}],"expected":"string","target":"from" },
+"emailTo":{"validate":[{"type":"boolean","value":true}, {"type":"number", "value":100} , {"type":"object", "value":{"test":"test"}}],"expected":"string","target":"to" },
+
+"interval":{"validate":[{"type":"boolean","value":true}, {"type":"string", "value":"TestValue"} , {"type":"object", "value":{"test":"test"}}],"expected":"number" ,"target":"interval" },
+"amount":{"validate":[{"type":"boolean","value":true}, {"type":"string", "value":"TestValue"} , {"type":"object", "value":{"test":"test"}}],"expected":"number","target":"amount" },
+"profitPct":{"validate":[{"type":"boolean","value":true}, {"type":"string", "value":"TestValue"} , {"type":"object", "value":{"test":"test"}}],"expected":"number","target":"profitPct" },
+"stopLossPct":{"validate":[{"type":"boolean","value":true}, {"type":"string", "value":"TestValue"} , {"type":"object", "value":{"test":"test"}}],"expected":"number","target":"stopLossPct" },
+"fee":{"validate":[{"type":"boolean","value":true}, {"type":"string", "value":"TestValue"} , {"type":"object", "value":{"test":"test"}}],"expected":"number","target":"fee" },
+"requiredCandles":{"validate":[{"type":"boolean","value":true}, {"type":"string", "value":"TestValue"} , {"type":"object", "value":{"test":"test"}}],"expected":"number","target":"requiredCandles" },
+"pollRate":{"validate":[{"type":"boolean","value":true}, {"type":"string", "value":"TestValue"} , {"type":"object", "value":{"test":"test"}}],"expected":"number","target":"pollRate" }
+}
+

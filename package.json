@@ -1,6 +1,6 @@
 {
   "name": "bitfox",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Multi Exchange Crypto Currency Trading bot, Data Analysis Library and Strategy Back testing Engine",
   "main": "index.js",
   "engines": {
@@ -125,6 +125,7 @@
     "node-telegram-bot-api": "^0.61.0",
     "npm": "^9.6.4",
     "save": "^2.9.0",
+    "sinon": "^15.0.4",
     "technicalindicators": "^3.1.0",
     "trendyways": "^0.8.0",
     "uuid4": "^2.0.2"
