@@ -22,6 +22,8 @@ const {ProcessManager} = require("../engine/ProcessManager");
 
 const {MfiMacd} = require("../strategies/MfiMacd");
 const utils = require("../lib/utility/util");
+const {Errors} = require("../errors/Errors");
+
 
 /**
  *  @typedef {Object} ticker A ticker is a statistical calculation with the information calculated over the past 24 hours for a specific market.
@@ -227,6 +229,15 @@ class EngineBuilder {
         this.args = {}
     };
 
+    invalidTypeError(actualType, target, expectedType ){
+        Errors.EngineInitializationError(`Invalid type: ${actualType} provided for ${target} expected type is: ${expectedType}`)
+    }
+
+    validateTypes(value,target, expectedType){
+        if(typeof value !== expectedType){
+            this.invalidTypeError(typeof value, target, expectedType)
+        }
+    }
     /**
      *
      * @param useLimitOrder {Boolean} Engine Specific Parameter if this is set to true the Engine will execute send limit orders
@@ -234,6 +245,7 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     useLimitOrder(useLimitOrder) {
+        this.validateTypes(useLimitOrder, "useLimitOrder", "boolean");
         this.args.useLimitOrder = useLimitOrder;
         return this;
     }
@@ -245,6 +257,7 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     notifyOnly(notifyOnly){
+        this.validateTypes(notifyOnly, "notifyOnly", "boolean");
         this.args.notifyOnly = notifyOnly;
         return this;
     }
@@ -255,6 +268,7 @@ class EngineBuilder {
      * @return {EngineBuilder}
      */
     exchange(exchange) {
+        this.validateTypes(exchange, "exchange", "string");
         this.args.exchangeName = exchange;
         return this;
     }
@@ -265,6 +279,7 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     interval(interval) {
+        this.validateTypes(interval, "interval", "number");
         this.args.interval = interval;
         return this;
     }
@@ -275,6 +290,7 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     symbol(symbol) {
+        this.validateTypes(symbol, "symbol", "string");
         this.args.symbol = symbol;
         return this;
     }
@@ -286,6 +302,7 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     timeframe(timeframe) {
+        this.validateTypes(timeframe, "timeframe", "string");
         this.args.timeframe = timeframe;
         return this;
     }
@@ -296,6 +313,7 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     amount(amount) {
+        this.validateTypes(amount, "amount", "number");
         this.args.amount = amount;
         return this;
     };
@@ -308,6 +326,7 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     profitPct(profitPct) {
+        this.validateTypes(profitPct, "profitPct", "number");
         this.args.profitPct = profitPct;
         return this;
     }
@@ -320,6 +339,7 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     stopLossPct(stopLossPct) {
+        this.validateTypes(stopLossPct, "stopLossPct", "number");
         this.args.stopLossPct = stopLossPct;
         return this;
     }
@@ -332,6 +352,7 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     fee(fee) {
+        this.validateTypes(fee, "fee", "number");
         this.args.fee = fee;
         return this;
     }
@@ -342,6 +363,7 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     backtest(backtest) {
+        this.validateTypes(backtest, "backtest", "boolean");
         this.args.backtest = backtest;
         return this;
     }
@@ -353,6 +375,7 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     public(_public) {
+        this.validateTypes(_public, "_public", "boolean");
         this.args.public = _public;
         return this;
     }
@@ -364,6 +387,7 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     life(life) {
+        this.validateTypes(life, "life", "boolean");
         this.args.life = life;
         return this;
     }
@@ -389,6 +413,7 @@ class EngineBuilder {
      */
     key(key) {
         this.initRequiredCreds();
+        this.validateTypes(key, "key", "string");
         this.args.requiredCredentials.apiKey = key;
         return this;
     }
@@ -409,6 +434,7 @@ class EngineBuilder {
      */
     secret(secret) {
         this.initRequiredCreds();
+        this.validateTypes(secret, "secret", "string");
         this.args.requiredCredentials.secret = secret;
         return this;
     }
@@ -497,6 +523,7 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     requiredCandles(requiredCandles) {
+        this.validateTypes(requiredCandles, "requiredCandles", "number");
         this.args.requiredCandles = requiredCandles;
         return this;
     }
@@ -508,6 +535,7 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     pollRate(pollRate) {
+        this.validateTypes(pollRate, "pollRate", "number");
         this.args.pollRate = pollRate;
         return this;
     }
@@ -519,6 +547,7 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     sidePreference(sidePreference) {
+        this.validateTypes(sidePreference, "sidePreference", "string");
         this.args.sidePreference = sidePreference;
         return this;
     }
@@ -541,6 +570,10 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     type(type) {
+        this.validateTypes(type, "type", "string");
+        if(!["email","slack","telegram"].includes(type.toLowerCase())){
+            Errors.UnsupportedExchangeOptionError("Invalid Alerting Type supported Types are (Email|Slack|Telegram)")
+        }
         this.args.type = type;
         return this;
     }
@@ -552,6 +585,7 @@ class EngineBuilder {
      * @returns {EngineBuilder}
      */
     notificationToken(token) {
+        this.validateTypes(token, "token", "string");
         this.args.token = token;
         return this;
     }
@@ -563,14 +597,21 @@ class EngineBuilder {
      *                         Please check our Documentation on Alerting & Notification.
      * @returns {EngineBuilder}
      */
-    telegramChatId(chatId){ this.args.chatId = chatId; return this;}
+    telegramChatId(chatId){ 
+        this.validateTypes(chatId, "chatId", "string");
+        this.args.chatId = chatId; return this;
+    }
 
     /**
      *
      * @param from {String}  Alerting & Notification Email Specific Parameter to identify who send the email!
      * @returns {EngineBuilder}
      */
-    emailFrom(from){ this.args.from = from; return this;}
+    emailFrom(from){ 
+        this.validateTypes(from, "from", "string");
+        this.args.from = from; 
+        return this;
+    }
 
     /**
      *
@@ -578,7 +619,11 @@ class EngineBuilder {
      *
      * @returns {EngineBuilder}
      */
-    emailTo(to){this.args.to = to; return this}
+    emailTo(to){
+        this.validateTypes(to, "to", "string");
+        this.args.to = to; 
+        return this
+    }
 
     /**
      *
@@ -702,6 +747,9 @@ class BitFox extends Service {
      * @returns {Promise<void>} Sets up the Exchange client and loads market Structures
      */
     async setupAndLoadClient(){
+        if(!BitFox.getExchanges().includes(this.params.exchangeName)){
+            Errors.ExchangeInitializationError(`Exchange ${this.params.exchangeName} Is not Supported`)
+        }
         await this.setUpClient(this.params.exchangeName, this.params);
     }
 
@@ -824,6 +872,9 @@ class BitFox extends Service {
     }
 
     async runExecutionContext(klineCandles) {
+        if(!this.has("fetchOHLCV")){
+            Errors.UnsupportedExchangeOptionError(`Unsupported Operation fetchOHLCV ${this.exchangeName} does not support Historical Candle Data`)
+        }
         let me = this;
         let ticker = null;
         if (this.strategySetupRequired) {
@@ -861,11 +912,16 @@ class BitFox extends Service {
      * @param me {BitFox} Iterates over market Structures and identifies the current Market Symbol to be used in execution context!
      */
     applySymbol(me) {
+        let isValidSymbol = false;
         Object.keys(me.markets).forEach(market => {
             if (me.markets[market].id === me.symbol) {
-                me.symbol = me.markets[market].symbol
+                me.symbol = me.markets[market].symbol;
+                isValidSymbol = true;
             }
         })
+        if(!isValidSymbol){
+            Errors.UnsupportedExchangeOptionError(`Invalid Symbol, ${me.symbol} not found on Target Exchange ${me.params.exchangeName}`);
+        }
     }
 
     /**
