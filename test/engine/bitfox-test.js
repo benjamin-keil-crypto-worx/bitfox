@@ -2,6 +2,7 @@
 const assert = require( "assert" );
 const chai = require("chai");
 
+
 let {BitFoxEngine, Strategy, Bollinger, RSITrend, SmartAccumulate,EmaTrend,MfiMacd,SimplePriceAlert,builder} = require("../../engine/BitFox");
 
 let keys=  ["requiredCandles","sidePreference","type","backtest",
@@ -125,5 +126,4 @@ describe( "BitFox Tests", async () => {
         let markets = await engine.getMarkets();
         chai.assert.isOk(markets, 'markets are returned');
     });
-
 } );
