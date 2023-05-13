@@ -279,6 +279,59 @@ const createEmaTrendConvergence   = (fast, slow,   buffer, diff) =>{
     }
     return convBuffer;
 }
+
+const createZemaCrossConvergence   = (fast, slow,   buffer, diff) =>{
+    let convBuffer = [];
+    let pointA = null;
+    let pointB = null;
+    let edge = null;
+    let isRefresh = true;
+    let lastFast = fast;
+    let lastSlow = slow;
+    let waitFor=null;
+    let context = "";
+    let AWAIT_CROSS_UP = false;
+    let AWAIT_CROSS_DOWN = false;
+    let lastEntry = "";
+    
+    const isCrossUp =(fast,slow)=>{
+        return fast > slow;
+    }
+    const isCrossDown =(fast,slow)=>{
+        return fast < slow;
+    }
+    
+    for( let i =diff; i < slow.length; i++){
+        lastFast = fast[i]
+        lastSlow = slow[i]
+        if(!AWAIT_CROSS_UP && !AWAIT_CROSS_DOWN){
+            AWAIT_CROSS_UP   =  lastFast < lastSlow;
+            AWAIT_CROSS_DOWN =  lastFast > lastSlow;
+            continue;
+        }
+        if((isCrossUp(lastFast, lastSlow) || isCrossDown(lastFast,  lastSlow)) && isRefresh){
+            context = "ZEMA"+( isCrossUp(lastFast, lastSlow) ? "::Long" : "::Short")
+            waitFor =isCrossUp(lastFast, lastSlow) ?  longExitCallback : shortExitCallback
+            pointA=  getEntryPoint(pointA, buffer, i);   
+            lastEntry = isCrossUp(lastFast,lastFast) ? "long" : 'short'
+            isRefresh = false;
+        }
+        if(isExit(isRefresh, waitFor, pointA, buffer, i)){
+            pointB=  getExitPoint(pointB, buffer, i);
+            edge = Edge.getInstance(pointA, pointB)   
+            let convergence = IndicatorConvergence.getInstance(context);
+            convergence.setEdge(edge) 
+            convergence.setEdgeIndexes(pointA.getPoint().index, pointB.getPoint().index)
+            convergence.setStopped(waitFor(pointA.getX(), buffer[i][4], profitTargetPct, stopLossPct).isStopped);
+            convBuffer.push(convergence);
+            AWAIT_CROSS_DOWN = false;
+            AWAIT_CROSS_UP   = false;
+            isRefresh = true;
+        }
+    }
+    return convBuffer;
+}
+
 const createSmaTrendConvergence   = (fast, slow,   buffer, diff) =>{
     return createEmaTrendConvergence(fast, slow,   buffer, diff)
 }
@@ -387,24 +440,27 @@ const test = async () =>{
     let indicatorData = {}
     let data = await dataLoader.load();
     let { o,h,l,c,v, buffer } = utils.createIndicatorData(data)
-    Strategy.INDICATORS.PatternRecognitionIndicator.getPatterns().forEach( key =>{
-            if(key !== "getPatterns"){
-                console.log(`Pattern ${key} `,indicatorData[key] = Strategy.INDICATORS.PatternRecognitionIndicator[key](o,h,l,c,v));
-            }
-    });
+    // Strategy.INDICATORS.PatternRecognitionIndicator.getPatterns().forEach( key =>{
+    //         if(key !== "getPatterns"){
+    //             console.log(`Pattern ${key} `,indicatorData[key] = Strategy.INDICATORS.PatternRecognitionIndicator[key](o,h,l,c,v));
+    //         }
+    // });
 
     // indicatorData["emaSlow"] = Strategy.INDICATORS["EMAIndicator"].getData(o,h,l,c,v,{period:200},buffer);
     // indicatorData["emaFast"] = Strategy.INDICATORS["EMAIndicator"].getData(o,h,l,c,v,{period:55},buffer);
     // indicatorData["smaSlow"] = Strategy.INDICATORS["SmaIndicator"].getData(o,h,l,c,v,{period:200},buffer);
     // indicatorData["smaFast"] = Strategy.INDICATORS["SmaIndicator"].getData(o,h,l,c,v,{period:55},buffer);
+
+    indicatorData["zmaSlow"] = Strategy.INDICATORS["ZEMAIndicator"].getData(o,h,l,c,v,{period:200},buffer);
+    indicatorData["zmaFast"] = Strategy.INDICATORS["ZEMAIndicator"].getData(o,h,l,c,v,{period:55},buffer);
     //
-    // let min =  100000;
-    // Object.keys(indicatorData).forEach( key =>{
-    //     if(indicatorData[key].length < min){ min = indicatorData[key].length}
-    // })
+    let min =  100000;
+    Object.keys(indicatorData).forEach( key =>{
+        if(indicatorData[key].length < min){ min = indicatorData[key].length}
+    })
     //
-    // let diff = (buffer.length - min);
-    // let length = buffer.length;
+    let diff = (buffer.length - min);
+    let length = buffer.length;
     //
     // IndicatorConvergenceList.push(createSuperTrendConvergence(indicatorData["SuperTrendIndicator"],buffer,diff));
     // IndicatorConvergenceList.push(createRsiConvergence(indicatorData["RsiIndicator"],buffer,diff));
@@ -415,31 +471,32 @@ const test = async () =>{
     // IndicatorConvergenceList.push(createSmaTrendConvergence(indicatorData["smaFast"],indicatorData["smaSlow"],buffer,diff));
     // IndicatorConvergenceList.push(createFloorConvergence(indicatorData["FloorPivots"],buffer,diff));
     // IndicatorConvergenceList.push(createWoodiesConvergence(indicatorData["Woodies"],buffer,diff));
+    IndicatorConvergenceList.push(createZemaCrossConvergence(indicatorData["zmaFast"],indicatorData["zmaSlow"],buffer,diff));
     //
-    // let obj = {};
-    // let barCount=[];
-    // IndicatorConvergenceList.forEach(convergence =>{
-    //    let targetKey = convergence[0].getContext()
-    //    obj[targetKey] = {
-    //     stopped:0,
-    //     wins:0,
-    //     overall: convergence.length,
-    //     winPct:0,
-    //     avgBarCount:0,
-    //    };
-    //    convergence.forEach( entry =>{
-    //        let inst = entry.toInstance();
-    //        if(inst.isStopped){ obj[targetKey].stopped = obj[targetKey].stopped+1 }
-    //        else{
-    //         obj[targetKey].wins = obj[targetKey].wins + 1;
-    //        }
-    //        barCount.push((inst.index[1]-inst.index[0]))
-    //    })
-    //    obj[targetKey].winPct = (obj[targetKey].wins / obj[targetKey].overall) * 100;
-    //    obj[targetKey].avgBarCount = utils.average(barCount);
-    // });
-    //
-    // console.log(JSON.stringify(obj,null,2));
+    let obj = {};
+    let barCount=[];
+    IndicatorConvergenceList.forEach(convergence =>{
+       let targetKey = convergence[0].getContext()
+       obj[targetKey] = {
+        stopped:0,
+        wins:0,
+        overall: convergence.length,
+        winPct:0,
+        avgBarCount:0,
+       };
+       convergence.forEach( entry =>{
+           let inst = entry.toInstance();
+           if(inst.isStopped){ obj[targetKey].stopped = obj[targetKey].stopped+1 }
+           else{
+            obj[targetKey].wins = obj[targetKey].wins + 1;
+           }
+           barCount.push((inst.index[1]-inst.index[0]))
+       })
+       obj[targetKey].winPct = (obj[targetKey].wins / obj[targetKey].overall) * 100;
+       obj[targetKey].avgBarCount = utils.average(barCount);
+    });
+    
+    console.log(JSON.stringify(obj,null,2));
 }
 
 test();

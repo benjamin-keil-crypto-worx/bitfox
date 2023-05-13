@@ -17,6 +17,8 @@ const {Bollinger} = require("../strategies/Bollinger");
 const {SimplePriceAlert} = require("../alerting/SimplePriceAlert");
 const {MarketMaker} = require("../strategies/MarketMaker");
 const {ThorsHammer} = require("../strategies/ThorsHammer");
+const {ZemaCrossOver} = require("../strategies/ZemaCrossOver");
+
 const getModels = require("../lib/model/Model").getModels();
 const {ProcessManager} = require("../engine/ProcessManager");
 
@@ -870,7 +872,11 @@ class BitFox extends Service {
 
         }
     }
-
+    /**
+     * 
+     * @param {Array<Array<Number>>} klineCandles Historical Candle Stick Data
+     * @returns 
+     */
     async runExecutionContext(klineCandles) {
         if(!this.has("fetchOHLCV")){
             Errors.UnsupportedExchangeOptionError(`Unsupported Operation fetchOHLCV ${this.exchangeName} does not support Historical Candle Data`)
@@ -1216,6 +1222,7 @@ module.exports = {
     MarketMaker:MarketMaker,
     SimplePriceAlert:SimplePriceAlert,
     ThorsHammer:ThorsHammer,
+    ZemaCrossOver:ZemaCrossOver,
     utils:utils,
     getModels:getModels,
     DataLoaderBuilder:DataLoaderBuilder,

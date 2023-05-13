@@ -92,11 +92,15 @@ class BackTest {
         this.funds = null;
         this.barAvgCount = [];
         this.barCount = 0;
+        this.maxBarCount = 0;
+        this.minBarCount = 1000000;
         this.stopOrderCount = 0;
         this.tradeSuccessCount = 0;
 
 
         this.adjustForBalance = false;
+        this.maxLongDrawDown = 0;
+        this.maxShortDrawDown = 0;
     }
 
     /**
@@ -111,6 +115,7 @@ class BackTest {
      * @returns {Promise<boolean>} method to start Back testing
      */
     async backTest(candles) {
+        let me = this;
         let buff = await this.adjustForDelay(candles);
         let indexCount = 0;
         while (buff.length > 0) {
@@ -133,40 +138,48 @@ class BackTest {
                     let approximatedBaseProfit  = Math.abs(trade.exitOrder.amount - trade.entryOrder.amount);
                     avgBuff.push(Math.abs(approximatedQuoteProfit));
                     avgBuff2.push(Math.abs(approximatedBaseProfit));
-                    Log.warn(`Trade Side: ${trade.entryOrder.side === 'sell' ? 'Short' : 'Long'} `);
+                    
+                    Log.trade(`Entry Time: ${trade.entryTimestamp} Exit Time ${trade.exitTimeStamp}`);
+                    Log.log(`Entry Order Price: ${trade.entryOrder.price} Exit Order price @ ${trade.exitOrder.price}`);
+                    Log.log(`Trade Side: ${trade.entryOrder.side === 'sell' ? 'Short' : 'Long'} `);
                     if(trade.stopTriggered){
-                        Log.short(`Stop Triggered !!!`);
+                        Log.short(`Stop Triggered`);
                         this.stopOrderCount = this.stopOrderCount+1;
                     }
                     else{
                         this.tradeSuccessCount = this.tradeSuccessCount+1;
                     }
-                    Log.log(`Entry Time: ${trade.entryTimestamp} Exit Time ${trade.exitTimeStamp}`);
-                    Log.log(`Entry Order Price: ${trade.entryOrder.price} Exit Order price @ ${trade.exitOrder.price}`);
                     Log.log(`Total Bar Count: ${trade.totalBars}`);
-                    Log.long(`Approximated Quote Profit: ${approximatedQuoteProfit}`);
-                    Log.short(`Approximated Base  Profit: ${approximatedBaseProfit}`);
+                    Log.log(`Approximated Quote Profit: ${approximatedQuoteProfit.toFixed(9)}`);
+                    Log.log(`Approximated Base  Profit: ${approximatedBaseProfit.toFixed(9)}`);
+                    Log.log(`Max Draw Down: ${trade.maxDrawDown}`);
+                    let unrealizedQuoteLoss = Math.abs((trade.maxDrawDown*trade.amount)-trade.funds) 
+                    let unrealizedBaseLoss =  unrealizedQuoteLoss / trade.maxDrawDown;
+                    let adjustUnrealizedLoss = (trade.entryOrder.side === 'sell') ?  unrealizedBaseLoss : unrealizedQuoteLoss; 
+
+                    Log.log(`Unrealized Losses Drawdown: ${adjustUnrealizedLoss.toFixed(9)}`);
                     Log.log(`Amount: ${trade.amount}`);
                     Log.log(`Funds: ${trade.funds}`);
                     console.log();
                 }
             })
 
-            Log.warn(`Average Quote Profit: ${util.average(avgBuff)}`);
-            Log.warn(`Average Base Profit: ${util.average(avgBuff2)}`);
+            Log.yellow(`Average Quote Profit: ${util.average(avgBuff)}`);
+            Log.yellow(`Average Base Profit: ${util.average(avgBuff2)}`);
 
         }
-        let funds = this.tradeHistory[this.tradeHistory.length-1].exitOrder ? this.tradeHistory[this.tradeHistory.length-1].funds : this.tradeHistory[this.tradeHistory.length-2].funds
-        Log.warn(`Total Trades : ${this.tradeHistory.length}`);
-        this.tradeHistory.length >= 2 ? Log.warn(`Starting Funds: ${this.tradeHistory[0].funds} Current Funds ${funds}`) : null;
-        this.tradeHistory.length >= 2 ? Log.warn(`Starting Amount: ${this.tradeHistory[0].amount} Current Amount ${this.tradeHistory[this.tradeHistory.length - 1].amount}`) : null;
-        Log.warn(`Average Bars Per Trade: ${(this.barAvgCount.length>0) ? util.average(this.barAvgCount) : 0}`);
+        let funds = this.tradeHistory[this.tradeHistory.length-1].funds;
+        Log.yellow(`Total Trades : ${this.tradeHistory.length}`);
+        this.tradeHistory.length >= 2 ? Log.yellow(`Starting Funds: ${this.tradeHistory[0].funds} Current Funds ${funds}`) : null;
+        this.tradeHistory.length >= 2 ? Log.yellow(`Starting Amount: ${this.tradeHistory[0].amount} Current Amount ${this.tradeHistory[this.tradeHistory.length - 1].amount}`) : null;
+        Log.yellow(`Maximum Bars  Per Trade: ${this.maxBarCount}`);
+        Log.yellow(`Minimum Bars Per Trade: ${this.minBarCount}`);
         let tradesLength = (this.tradeHistory[this.tradeHistory.length-1].exitOrder !== null) ? this.tradeHistory.length : this.tradeHistory.length-1;
         let successRate = (this.tradeSuccessCount / tradesLength) * 100;
-        Log.warn(`Number Stop Orders Triggered : ${this.stopOrderCount}`);
-        Log.warn(`Number of Successful Trades : ${this.tradeSuccessCount}`);
-        Log.warn(`Overall Success Rate : ${successRate} %`);
-        this.tradeHistory[this.tradeHistory.length-1].exitOrder === null ? console.log("Ongoing Trade ",JSON.stringify(this.tradeHistory[this.tradeHistory.length-1].entryOrder,null,2)) : null;
+        Log.yellow(`Number Stop Orders Triggered : ${this.stopOrderCount}`);
+        Log.yellow(`Number of Successful Trades : ${this.tradeSuccessCount}`);
+        Log.yellow(`Overall Success Rate : ${successRate} %`);
+        this.tradeHistory[this.tradeHistory.length-1].exitOrder === null ? console.log("Ongoing Trade \n",JSON.stringify(this.tradeHistory[this.tradeHistory.length-1].entryOrder,null,2)) : null;
     }
 
     /**
@@ -215,11 +228,14 @@ class BackTest {
             }
                 break;
             case State.STATE_AWAIT_TAKE_PROFIT: {
+                
                 this.barCount++;
                 let currentOrder = this.tradeHistory[this.tradeHistory.length - 1].entryOrder;
                 if (this.tradeDirection === 'long' ) {
+                    this.calculateLongDrawDown(currentOrder, currentCandles);
                     this.handleStateAwaitLongResult(currentOrder, currentCandles);
                 } else {
+                    this.calculateShortDrawDown(currentOrder, currentCandles);
                     this.handleStateAwaitShortResult(currentOrder, currentCandles);
                 }
             }
@@ -245,6 +261,30 @@ class BackTest {
             this.applyStopLoss(currentCandles)
         }
         this.strategy.setState((isinProfitRange) ? State.STATE_TAKE_PROFIT : (isInStopLossRange) ? State.STATE_STOP_LOSS_TRIGGERED : State.STATE_AWAIT_TAKE_PROFIT)
+    }
+
+    /**
+     *
+     * @param currentOrder {any} see ccxt documentation for order structure
+     * @param currentCandles {Array}  open, high, low, close and volume values
+     * @returns {void} Method to assign max Draw Down price value it will be used in the final output 
+     */
+    calculateLongDrawDown(currentOrder, currentCandles) {
+        if(currentOrder.price < currentCandles[4] && currentOrder.price > this.maxLongDrawDown){
+            this.maxLongDrawDown =currentCandles[4];
+        }
+    }
+
+    /**
+     *
+     * @param currentOrder {any} see ccxt documentation for order structure
+     * @param currentCandles {Array}  open, high, low, close and volume values
+     * @returns {void} Method to assign max Draw Down price value it will be used in the final output 
+     */
+    calculateShortDrawDown(currentOrder, currentCandles) {
+        if(currentOrder.price > currentCandles[4] && currentOrder.price > this.maxShortDrawDown){
+            this.maxShortDrawDown = currentCandles[4];
+        }
     }
 
     /**
@@ -349,10 +389,16 @@ class BackTest {
         currentTrade.totalBars = this.barCount;
         this.barAvgCount.push(this.barCount)
         if (this.tradeDirection === 'long') {
+            currentTrade.maxDrawDown = this.maxLongDrawDown;
+            this.maxLongDrawDown = 0;
             this.executeSellOrder(currentTrade, currentCandles);
         } else {
+            currentTrade.maxDrawDown = this.maxShortDrawDown;
+            this.maxShortDrawDown = 0;
             this.executeBuyOrder(currentCandles, currentTrade);
         }
+        if(this.maxBarCount < this.barCount){ this.maxBarCount = this.barCount}
+        if(this.minBarCount > this.barCount){ this.minBarCount = this.barCount}
         this.barCount = 0;
     }
 
