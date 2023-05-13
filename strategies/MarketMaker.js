@@ -178,7 +178,7 @@ class MarketMaker extends Strategy{
     async handleBaseAccumulationEntryFlow(bidPrice, askPrice) {
         let me = this;
         this.sellOrder = await this.exchange.limitSellOrder(this.symbol, this.amount, askPrice, {});
-        this.eventHandler.fireEvent(`on${this.context}`,`Placed Sell Order for:${this.amount} ${this.symbol} @${askPrice.toFixed(4)} Awaiting Order fill to place Buy Order for: ${this.amount} ${this.symbol} @${bidPrice.toFixed(4)}`)
+        this.eventHandler.fireEvent(`on${this.context}`,`Placed Sell Order for:${this.amount} ${this.symbol} @${askPrice.toFixed(4)} Awaiting Order fill to place Buy Order for: ${me.getExitBuyOrderMount(bidPrice)} ${this.symbol} @${bidPrice.toFixed(4)}`)
         this.nextOrder.apply = async function(){ return await me.exchange.limitBuyOrder(me.symbol, me.getExitBuyOrderMount(bidPrice), bidPrice, {});}
         this.startTracking.entryFill = true;
 
