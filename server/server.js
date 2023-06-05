@@ -58,7 +58,7 @@ class Server {
      */
     constructor(config) {
         this.id = uuid.v4();
-        this.port = config.port || 6661;
+        this.port = config.port || 8080;
         this.address = config.address || "http://localhost";
         this.xSession = config.xApiKey || Buffer.from("x-session-id:"+this.id).toString('base64');
         this.requiredCredentials = config.requiredCredentials;

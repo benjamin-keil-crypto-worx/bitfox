@@ -879,7 +879,7 @@ class BitFox extends Service {
     /**
      * 
      * @param {string} serverUrl - Server Address default is localhost  
-     * @param {*} serverPort  -  Server port Default is 6661 
+     * @param {*} serverPort  -  Server port Default is 8080 
      */
     async startServer(serverUrl =null, serverPort =null){
       
