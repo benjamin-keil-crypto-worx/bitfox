@@ -875,7 +875,7 @@ class BitFox extends Service {
     /**
      * 
      * @param {Array<Array<Number>>} klineCandles Historical Candle Stick Data
-     * @returns 
+     * @returns {Array<Array<Number>>} runs execution Context and then just returns klineCandles Historical Candle Stick Data
      */
     async runExecutionContext(klineCandles) {
         if(!this.has("fetchOHLCV")){
