@@ -21,6 +21,8 @@ const {ZemaCrossOver} = require("../strategies/ZemaCrossOver");
 
 const getModels = require("../lib/model/Model").getModels();
 const {ProcessManager} = require("../engine/ProcessManager");
+const {Server} = require("../server/server");
+const {Client} = require("../server/client");
 
 const {MfiMacd} = require("../strategies/MfiMacd");
 const utils = require("../lib/utility/util");
@@ -850,6 +852,7 @@ class BitFox extends Service {
      *                          Intervals when the Engine is providing internal logging and Event Listeners so that users can react
      *                          to internal logical processes and events.
      */
+
     async run() {
         // optional assign a local variable to access this class in another scope
         const me = this;
@@ -872,10 +875,28 @@ class BitFox extends Service {
 
         }
     }
+
+    /**
+     * 
+     * @param {string} serverUrl - Server Address default is localhost  
+     * @param {*} serverPort  -  Server port Default is 8080 
+     */
+    async startServer(serverUrl =null, serverPort =null){
+      
+        let apiKey = Server.createApiKey();
+        let server = Server.getNode({
+            server:serverUrl,
+            port:serverPort,
+            xApiKey:apiKey,
+            credentials:this.requiredCredentials
+        });
+        await server.run(apiKey);
+    }
+
     /**
      * 
      * @param {Array<Array<Number>>} klineCandles Historical Candle Stick Data
-     * @returns {Array<Array<Number>>} runs execution Context and then just returns klineCandles Historical Candle Stick Data
+     * @returns {Array<Array<Number>>} klineCandles Historical Candle Stick Data
      */
     async runExecutionContext(klineCandles) {
         if(!this.has("fetchOHLCV")){
@@ -1226,6 +1247,6 @@ module.exports = {
     utils:utils,
     getModels:getModels,
     DataLoaderBuilder:DataLoaderBuilder,
-    builder:EngineBuilder.builder
-
+    builder:EngineBuilder.builder,
+    Client:Client
 }

@@ -46,3 +46,16 @@ module.exports.getTestEngine = () =>{
        .interval(10)
        .build();
 }
+
+module.exports.getEngineForServer = () =>{
+   return builder()
+       .requiredCandles(200)
+       .public(true)
+       .exchange("bybit")
+       .symbol("ADAUSDT")
+       .timeframe("5m")
+       .key("FAKE_KEY")
+       .secret("FAKE_SECRET")
+       .life(false)
+       .build();
+}
