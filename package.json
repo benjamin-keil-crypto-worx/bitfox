@@ -1,6 +1,6 @@
 {
   "name": "bitfox",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Multi Exchange Crypto Currency Trading bot, Data Analysis Library and Strategy Back testing Engine",
   "main": "index.js",
   "engines": {
@@ -16,6 +16,8 @@
     "test-verbose": "mocha --timeout 5000 --recursive  --reporter doc > test-results/report.html",
     "sandbox-dataLoader": "node sandbox/dataLoaderSandbox.js",
     "sandbox-backTesting": "node sandbox/strategySandBox",
+    "sandbox-server":"node sandbox/serverSandbox",
+    "sandbox-client":"node sandbox/clientSandbox",
     "postinstall": "node postinstall.js",
     "generateDocsScript": "node docdash-script-generator.js > generateDocs.ps1"
   },
@@ -108,18 +110,22 @@
   ],
   "dependencies": {
     "@sendgrid/mail": "^7.7.0",
-    "axios": "^1.3.4",
+    "axios": "^1.4.0",
+    "body-parser": "^1.20.2",
     "boilerplate-readme-template": "^1.0.1",
     "ccxt": "^3.0.40",
     "chai": "^4.3.7",
     "clean-jsdoc-theme": "^4.2.7",
     "colors": "^1.4.0",
     "docdash": "^2.0.1",
+    "express": "^4.18.2",
     "fs-extra": "^11.1.0",
     "ink-docstrap": "^1.3.2",
     "install": "^0.13.0",
+    "json-rpc-2.0": "^1.6.0",
     "minimist": "^1.2.8",
     "mocha": "^10.2.0",
+    "node-fetch": "^3.3.1",
     "node-schedule": "^2.1.1",
     "node-super-trend": "^1.5.0",
     "node-telegram-bot-api": "^0.61.0",
@@ -128,6 +134,7 @@
     "sinon": "^15.0.4",
     "technicalindicators": "^3.1.0",
     "trendyways": "^0.8.0",
+    "uuid": "^9.0.0",
     "uuid4": "^2.0.2"
   },
   "devDependencies": {

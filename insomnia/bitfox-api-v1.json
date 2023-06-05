@@ -1,0 +1,527 @@
+{
+	"openapi": "3.0.2",
+	"info": {
+		"title": "Bitfox API",
+		"version": "1.0.0",
+		"license": {
+			"name": "ISC",
+			"url": "https://opensource.org/license/isc-license-txt/"
+		},
+		"description": "This Api allows users to connect and leverage basic Bitfox Engine functionality",
+		"contact": {
+			"name": "Bitfox  Support",
+			"url": "https://github.com/benjamin-keil-crypto-worx/bitfox/issuest",
+			"email": "team.cryptoworx@gmail.com"
+		}
+	},
+	"components": {
+		"securitySchemes": {
+			"ApiKey": {
+				"type": "apiKey",
+				"in": "header",
+				"name": "xSession"
+			}
+		}
+	},
+	"security": [{
+		"ApiKey": []
+	}],
+	"externalDocs": {
+		"description": "Bitfox API User Guide",
+		"url": "https://benjamin-keil-crypto-worx.github.io/bitfox-wiki/#/"
+	},
+	"servers": [{
+		"url": "http://localhost:8080/bifox",
+		"description": "Bitfox API"
+	}],
+	"paths": {
+		"/ping": {
+			"post": {
+				"tags": [
+					"ping"
+				],
+				"description": "Allows User to ping the Bitfox Engine Server",
+				"summary": "Ping the server to see if it online/offline.",
+				"operationId": "pingServer",
+				"responses": {
+					"200": {
+						"description": "A simple ACK message",
+						"content": {
+							"application/json": {
+								"examples": {
+									"ping": {
+										"value": {
+											"message": "pong",
+											"code": 200,
+											"success": true
+										}
+									}
+								},
+								"schema": {
+									"type": "object"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Unautorized",
+						"content": {
+							"application/json": {
+								"examples": {
+									"ping": {
+										"value": {
+											"error": "Unauthorized",
+											"code": "401"
+										}
+									}
+								},
+								"schema": {
+									"type": "object"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/health": {
+			"post": {
+				"tags": [
+					"health"
+				],
+				"summary": "Simple Health check",
+				"operationId": "healthCheck",
+				"responses": {
+					"200": {
+						"description": "A simple Health check",
+						"content": {
+							"application/json": {
+								"examples": {
+									"ping": {
+										"value": {
+											"message": "Server running at : http://localhost port : 8080",
+											"endpoints": {
+												"ping": "Ping the server to see if it online",
+												"health": "Simple Health check",
+												"ballance": "Returns available ballance on target exchange",
+												"ticker": "Returns the current Ticker information of selected Currency Pair",
+												"orderbook": "Returns the Current Order Book for a given Currency Pair",
+												"candles": "Returns Historical Candle data from exchange for given  trading pair",
+												"buy": "Execute a Market buy order ",
+												"sell": "Execute a market Sell order",
+												"shutdown": "Emergency Shut Down"
+											},
+											"code": 200,
+											"success": true
+										}
+									}
+								},
+								"schema": {
+									"type": "object"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Unautorized",
+						"content": {
+							"application/json": {
+								"examples": {
+									"ping": {
+										"value": {
+											"error": "Unauthorized",
+											"code": "401"
+										}
+									}
+								},
+								"schema": {
+									"type": "object"
+								}
+							}
+						}
+					}
+				}
+
+			}
+		},
+		"/getballance": {
+			"post": {
+				"tags": [
+					"getballance"
+				],
+				"summary": "Returns available ballance on target exchange",
+				"operationId": "getBallance"
+			}
+		},
+		"/ticker": {
+			"post": {
+				"tags": [
+					"ticker"
+				],
+				"summary": "Returns the current Ticker information of selected Currency Pair",
+				"operationId": "getTicker",
+				"responses": {
+					"200": {
+						"description": "Get A currency Ticker from Target Exchange",
+						"content": {
+							"application/json": {
+								"examples": {
+									"ticker": {
+										"value": {
+											"symbol": "ADA/USDT",
+											"high": 0.367,
+											"low": 0.3559,
+											"bid": 0.3639,
+											"bidVolume": 26047.15,
+											"ask": 0.364,
+											"askVolume": 10967.3,
+											"vwap": 0.3621253386584188,
+											"open": 0.3578,
+											"close": 0.364,
+											"last": 0.364,
+											"change": 0.0062,
+											"percentage": 1.73,
+											"average": 0.3609,
+											"baseVolume": 6458978.66,
+											"quoteVolume": 2338959.83464,
+											"info": {
+												"symbol": "ADAUSDT",
+												"bid1Price": "0.3639",
+												"bid1Size": "26047.15",
+												"ask1Price": "0.364",
+												"ask1Size": "10967.3",
+												"lastPrice": "0.364",
+												"prevPrice24h": "0.3578",
+												"price24hPcnt": "0.0173",
+												"highPrice24h": "0.367",
+												"lowPrice24h": "0.3559",
+												"turnover24h": "2338959.83464",
+												"volume24h": "6458978.66",
+												"usdIndexPrice": "0.36401248"
+											}
+										}
+									}
+								},
+								"schema": {
+									"type": "object"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Unautorized",
+						"content": {
+							"application/json": {
+								"examples": {
+									"ping": {
+										"value": {
+											"error": "Unauthorized",
+											"code": "401"
+										}
+									}
+								},
+								"schema": {
+									"type": "object"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/orderbook": {
+			"post": {
+				"tags": [
+					"orderbook"
+				],
+				"summary": "Returns the Current Order Book for a given Currency Pair",
+				"operationId": "orderbook",
+				"responses": {
+					"200": {
+						"description": "A simple Health check",
+						"content": {
+							"application/json": {
+								"examples": {
+									"orderbook": {
+										"value": {
+											"symbol": "ADAUSDT",
+											"bids": [
+												[
+													0.3735,
+													17175.15
+												],
+												[
+													0.3734,
+													23068.83
+												]
+											],
+											"asks": [
+												[
+													0.3736,
+													24768.63
+												],
+												[
+													0.3737,
+													35779.75
+												]
+											],
+											"timestamp": 1685958329885,
+											"datetime": "2023-06-05T09:45:29.885Z"
+										}
+									}
+								},
+								"schema": {
+									"type": "object"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Unautorized",
+						"content": {
+							"application/json": {
+								"examples": {
+									"ping": {
+										"value": {
+											"error": "Unauthorized",
+											"code": "401"
+										}
+									}
+								},
+								"schema": {
+									"type": "object"
+								}
+							}
+						}
+					}
+				}
+
+			}
+		},
+		"/candles": {
+			"post": {
+				"tags": [
+					"candles"
+				],
+				"summary": "Returns Historical Candle data from exchange for given  trading pair",
+				"operationId": "candles",
+				"responses": {
+					"200": {
+						"description": "A simple Health check",
+						"content": {
+							"application/json": {
+								"examples": {
+									"candles": {
+										"value": [
+											[
+												1685121300000,
+												0.3596,
+												0.3598,
+												0.3593,
+												0.3595,
+												22760.11
+											],
+											[
+												1685121600000,
+												0.3595,
+												0.3595,
+												0.3592,
+												0.3592,
+												51637.14
+											]
+										]
+									}
+								},
+								"schema": {
+									"type": "object"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Unautorized",
+						"content": {
+							"application/json": {
+								"examples": {
+									"ping": {
+										"value": {
+											"error": "Unauthorized",
+											"code": "401"
+										}
+									}
+								},
+								"schema": {
+									"type": "object"
+								}
+							}
+						}
+					}
+				}
+
+			}
+		},
+		"/buy": {
+			"post": {
+				"tags": [
+					"buy"
+				],
+				"summary": "Execute a Market buy order",
+				"operationId": "marketBuy",
+				"responses": {
+					"200": {
+						"description": "A simple Health check",
+						"content": {
+							"application/json": {
+								"examples": {
+									"buy": {
+										"value": {
+											"id": "50001",
+											"datetime": "2023-05-27T09:53:20.393Z",
+											"timestamp": 1685181200393,
+											"lastTradeTimestamp": 1685181200393,
+											"status": "open",
+											"symbol": "ADAUSDT",
+											"type": "market",
+											"timeInForce": "GTC",
+											"side": "buy",
+											"price": {},
+											"average": {},
+											"amount": 20
+										}
+									}
+								},
+								"schema": {
+									"type": "object"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Unautorized",
+						"content": {
+							"application/json": {
+								"examples": {
+									"ping": {
+										"value": {
+											"error": "Unauthorized",
+											"code": "401"
+										}
+									}
+								},
+								"schema": {
+									"type": "object"
+								}
+							}
+						}
+					}
+				}
+
+			}
+		},
+		"/sell": {
+			"post": {
+				"tags": [
+					"sell"
+				],
+				"summary": "Execute a market Sell order",
+				"operationId": "marketSell",
+				"responses": {
+					"200": {
+						"description": "A simple Health check",
+						"content": {
+							"application/json": {
+								"examples": {
+									"sell": {
+										"value": {
+											"id": "50001",
+											"datetime": "2023-05-27T09:53:54.588Z",
+											"timestamp": 1685181234588,
+											"lastTradeTimestamp": 1685181234588,
+											"status": "open",
+											"symbol": "ADAUSDT",
+											"type": "market",
+											"timeInForce": "GTC",
+											"side": "sell",
+											"price": {},
+											"average": {},
+											"amount": 20
+										}
+									}
+								}
+							},
+							"schema": {
+								"type": "object"
+							}
+						}
+					},
+					"401": {
+						"description": "Unautorized",
+						"content": {
+							"application/json": {
+								"examples": {
+									"ping": {
+										"value": {
+											"error": "Unauthorized",
+											"code": "401"
+										}
+									}
+								},
+								"schema": {
+									"type": "object"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/shutdown ": {
+			"post": {
+				"tags": [
+					"shutdown"
+				],
+				"summary": "Emergency Shut Down",
+				"operationId": "emergencyShutdown",
+				"responses": {
+					"200": {
+						"description": "Shuts down a server instance",
+						"content": {
+							"application/json": {
+								"examples": {
+									"shutdown": {
+										"value": {
+											"message": "Shutting Down Server",
+											"code": 200
+										}
+									}
+								},
+								"schema": {
+									"type": "object"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Unautorized",
+						"content": {
+							"application/json": {
+								"examples": {
+									"ping": {
+										"value": {
+											"error": "Unauthorized",
+											"code": "401"
+										}
+									}
+								},
+								"schema": {
+									"type": "object"
+								}
+							}
+						}
+					}
+				}
+
+			}
+		}
+	}
+}
