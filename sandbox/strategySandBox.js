@@ -1,15 +1,15 @@
-let {SuperTrend} = require("../engine/BitFox");
+let {ThorsHammer} = require("../engine/BitFox");
 let modules = require("./sandbox-modules");
 
-let engine = modules.getLifeEngine();
+let engine = modules.getTestEngineForBackTest();
 
 (async  () =>{
 
     await engine.setupAndLoadClient()
-    engine.applyStrategy(SuperTrend)
+    engine.applyStrategy(ThorsHammer)
 
     // Set Up Event Handlers 
-    engine.on('onStrategyResponse', (eventArgs) => {
+    engine.on('SmartAccumulate', (eventArgs) => {
         console.log(eventArgs)
     });
 

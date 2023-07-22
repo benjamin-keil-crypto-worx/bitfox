@@ -4,7 +4,7 @@ const {Log} = require("../lib/utility/Log");
 
 const Mock = require("../service/MockService").Service;
 const fs = require("fs");
-
+const os = require("os");
 /**
  * Class BackTest
  *
@@ -82,6 +82,7 @@ class BackTest {
      */
     constructor(strategy, args) {
 
+
         this.strategy = strategy;
         this.args = args;
         this.mockService =Mock.getService(args)
@@ -101,14 +102,32 @@ class BackTest {
         this.adjustForBalance = false;
         this.maxLongDrawDown = 0;
         this.maxShortDrawDown = 0;
+        this.outDir = null;
+        this.createOutputDirectory();
     }
 
+    createOutputDirectory(){
+        this.outDir= `${os.homedir()}/bitfox`;
+        if (!fs.existsSync( this.outDir)){
+            fs.mkdirSync( this.outDir);
+        }
+    }
     /**
      *
      * @returns {boolean} Check to see if a Trade Template has an exitOrder
      */
     hasExitOrder(){ return this.tradeHistory.length>1 ||this.tradeHistory[this.tradeHistory.length-1].exitOrder != null;}
 
+    writeResultFile( data,context ){
+        let date = new Date().toISOString().split("T")[0];
+        let fileName = `${context}-${date}.json`
+        try {
+            fs.writeFileSync(`${this.outDir}/${fileName}`, data);
+            // file written successfully
+        } catch (err) {
+            console.error(err);
+        }
+    }
     /**
      *
      * @param candles {Array}  open, high, low, close and volume values
@@ -128,7 +147,10 @@ class BackTest {
         if(this.tradeHistory.length<=0){
             return false;
         }
-        let copy = JSON.parse(JSON.stringify(this.tradeHistory));
+        let resultString = JSON.stringify(this.tradeHistory);
+        this.writeResultFile(resultString, this.strategy.getContext().context );
+        let copy = JSON.parse(resultString);
+
         let avgBuff = [];
         let avgBuff2 = [];
         if (this.hasExitOrder()) {

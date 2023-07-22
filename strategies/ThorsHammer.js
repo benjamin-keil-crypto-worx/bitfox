@@ -46,6 +46,7 @@ class ThorsHammer extends Strategy {
      */
     constructor(args) {
         super(args);
+        this.setContext("ThorsHammer")
         this.emaFast = null;
         this.emaSlow = null;
         this.periodFast = args.strategyExtras && args.strategyExtras.periodFast || 10;
