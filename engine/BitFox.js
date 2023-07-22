@@ -913,7 +913,16 @@ class BitFox extends Service {
         }
 
         let result = await me.foxStrategy.run(0, false, ticker.last);
-        me.eventHandler.fireEvent("onStrategyResponse", result);
+        let takeProfitTarget = "N/A";
+        let tickerdata = null;
+        if(result.state === State.STATE_AWAIT_TAKE_PROFIT){
+            tickerdata = {previousClose:ticker.previousClose,last:ticker.last,timestamp:ticker.timestamp,averagePrice:ticker.average, };
+            takeProfitTarget = (me.currentSide==="short") ? me.foxStrategy.calculateShortProfitTarget(me.sellOrder.price, me.takeProfitPct) : me.foxStrategy.calculateLongProfitTarget(me.buyOrder.price, me.takeProfitPct)
+        }
+       
+        let info =  {ticker:tickerdata,currentSide:me.currentSide,takeProfitTarget:takeProfitTarget};
+        me.eventHandler.fireEvent("onStrategyResponse", {result:result, info:info});
+
         if (result && result.state === State.STATE_CONTEXT_INDEPENDENT) {
             this.strategySetupRequired = false;
             await me.foxStrategy.run(0, false, ticker.last);
@@ -1058,6 +1067,9 @@ class BitFox extends Service {
             me.foxStrategy.setState(State.STATE_AWAIT_TAKE_PROFIT);
             me.eventHandler.fireEvent("onOrderFilled", {timestamp:new Date().getTime(), order:currOrder});
         }
+        if(['canceled', 'expired', 'rejected'].includes(currOrder.status)){
+            me.foxStrategy.setState(State.STATE_PENDING);
+        }
     }
 
     /**
@@ -1067,7 +1079,7 @@ class BitFox extends Service {
      * @returns {Promise<void>} Checks if a current Short position or Trade is in profit.
      */
     async checkIsShortInProfit(ticker, me) {
-        if (ticker.last <= me.State.calculateShortProfitTarget(me.sellOrder.price, me.takeProfitPct)) {
+        if (ticker.last <= me.foxStrategy.calculateShortProfitTarget(me.sellOrder.price, me.takeProfitPct)) {
             await this.takeProfit(me);
             me.foxStrategy.setState(State.STATE_TAKE_PROFIT);
         }
@@ -1151,7 +1163,7 @@ class BitFox extends Service {
     async enterShort(me) {
         let oB = await me.fetchOrderBook(me.symbol, 20, {})
         const askPrice = oB.asks[2][0];
-        let orderCall = (me.useLimitOrder) ? "limitBuyOrder" : "marketBuyOrder"
+        let orderCall = (me.useLimitOrder) ? "limitSellOrder" : "marketSellOrder"
         me.sellOrder = (me.life) ? await me[[orderCall]](me.symbol, me.amount, askPrice, {}) : await me.mockExchange[orderCall](me.symbol, me.amount, askPrice, {});
         me.currentSide = 'sell';
         me.foxStrategy.setState(State.STATE_AWAIT_ORDER_FILLED);

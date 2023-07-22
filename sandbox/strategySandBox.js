@@ -1,12 +1,12 @@
-let {ZemaCrossOver} = require("../engine/BitFox");
+let {SuperTrend} = require("../engine/BitFox");
 let modules = require("./sandbox-modules");
 
-let engine = modules.getTestEngineForBackTest();
+let engine = modules.getLifeEngine();
 
 (async  () =>{
 
     await engine.setupAndLoadClient()
-    engine.applyStrategy(ZemaCrossOver)
+    engine.applyStrategy(SuperTrend)
 
     // Set Up Event Handlers 
     engine.on('onStrategyResponse', (eventArgs) => {
