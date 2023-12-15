@@ -20,7 +20,8 @@ const runTest = async () =>{
     let { o,h,l,c,v, buffer } = utils.createIndicatorData(data)
 
 
-    indicatorData["SupportAndResistance"] = Strategy.INDICATORS["SupportAndResistance"].getData(o,h,l,c,v,{lookback:9},buffer);
+    indicatorData["test"] = Strategy.INDICATORS["SupportAndResistance"].getData(o,h,l,c,v,{lookback:55},buffer);
+    console.log(indicatorData);
 }
 
 runTest();
