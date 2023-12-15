@@ -10,7 +10,30 @@ let engine = modules.getTestEngineForBackTest();
 
     // Set Up Event Handlers 
     engine.on('SmartAccumulate', (eventArgs) => {
-        console.log(eventArgs)
+        console.log(":::::::::::::::::::::::::::::::::::::",eventArgs)
+    });
+    // Set Up Event Handlers 
+    engine.on('onStrategyResponse', (eventArgs) => {
+        console.log(":::::::::::::::::::::::::::::::::::::",eventArgs)
+    });
+
+    engine.on('onMessage', (eventArgs) => {
+        console.log(":::::::::::::::::::::::::::::::::::::",eventArgs)
+    });
+    engine.on('onError', (eventArgs) => {
+        console.log(":::::::::::::::::::::::::::::::::::::",eventArgs)
+    });
+    engine.on('onOrderPlaced', (eventArgs) => {
+        console.log(":::::::::::::::::::::::::::::::::::::",eventArgs)
+    });
+    engine.on('onOrderFilled', (eventArgs) => {
+        console.log(":::::::::::::::::::::::::::::::::::::",eventArgs)
+    });
+    engine.on('onTradeComplete', (eventArgs) => {
+        console.log(":::::::::::::::::::::::::::::::::::::",eventArgs)
+    });
+    engine.on('onStopLossTriggered', (eventArgs) => {
+        console.log(":::::::::::::::::::::::::::::::::::::",eventArgs)
     });
 
     await engine.run();

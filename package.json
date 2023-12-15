@@ -15,6 +15,8 @@
     "test": "mocha --timeout 5000 --recursive",
     "test-verbose": "mocha --timeout 5000 --recursive  --reporter doc > test-results/report.html",
     "sandbox-dataLoader": "node sandbox/dataLoaderSandbox.js",
+    "sandbox-indicatorTest": "node sandbox/indicatorTestLoader.js",
+
     "sandbox-backTesting": "node sandbox/strategySandBox",
     "sandbox-server":"node sandbox/serverSandbox",
     "sandbox-client":"node sandbox/clientSandbox",
