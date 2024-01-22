@@ -18,6 +18,8 @@ const {SimplePriceAlert} = require("../alerting/SimplePriceAlert");
 const {MarketMaker} = require("../strategies/MarketMaker");
 const {ThorsHammer} = require("../strategies/ThorsHammer");
 const {ZemaCrossOver} = require("../strategies/ZemaCrossOver");
+const {MultiDivergence} = require("../strategies/MultiDivergence");
+const {DynamicGrid} = require("../strategies/DynamicGrid");
 
 const getModels = require("../lib/model/Model").getModels();
 const {ProcessManager} = require("../engine/ProcessManager");
@@ -865,11 +867,20 @@ class BitFox extends Service {
         } else {
             if(this.runAsProcess){
                 let me = this;
-                klineCandles = await me.runExecutionContext(klineCandles);
+                try{
+                    klineCandles = await me.runExecutionContext(klineCandles);
+                } catch(err){
+                    console.log(err);
+                }
+               
             }else{
                 setInterval(async () => {
                     let me = this;
-                    klineCandles = await me.runExecutionContext(klineCandles);
+                    try{
+                        klineCandles = await me.runExecutionContext(klineCandles);
+                    } catch(err){
+                        console.log(err);
+                    }
                 }, Number(me.interval) * 1000);
             }
 
@@ -917,7 +928,7 @@ class BitFox extends Service {
         let tickerdata = null;
         if(result.state === State.STATE_AWAIT_TAKE_PROFIT){
             tickerdata = {previousClose:ticker.previousClose,last:ticker.last,timestamp:ticker.timestamp,averagePrice:ticker.average, };
-            takeProfitTarget = (me.currentSide==="short") ? me.foxStrategy.calculateShortProfitTarget(me.sellOrder.price, me.takeProfitPct) : me.foxStrategy.calculateLongProfitTarget(me.buyOrder.price, me.takeProfitPct)
+            takeProfitTarget = (me.currentSide === "sell") ? me.foxStrategy.calculateShortProfitTarget(me.sellOrder.price, me.takeProfitPct) : me.foxStrategy.calculateLongProfitTarget(me.buyOrder.price, me.takeProfitPct)
         }
        
         let info =  {ticker:tickerdata,currentSide:me.currentSide,takeProfitTarget:takeProfitTarget};
@@ -1256,6 +1267,8 @@ module.exports = {
     SimplePriceAlert:SimplePriceAlert,
     ThorsHammer:ThorsHammer,
     ZemaCrossOver:ZemaCrossOver,
+    MultiDivergence:MultiDivergence,
+    DynamicGrid:DynamicGrid,
     utils:utils,
     getModels:getModels,
     DataLoaderBuilder:DataLoaderBuilder,

@@ -198,6 +198,10 @@ class Strategy {
             return {amount:amount, funds:amount * currentCandle[4]};
     }
 
+    utility(){
+        return utils;
+    }
+
     /**
      *
      * @param msg {String} a message for the user to print out the Strategy usage

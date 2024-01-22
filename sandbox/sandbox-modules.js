@@ -15,7 +15,7 @@ module.exports.getTestEngineForBackTest = () =>{
             .timeframe("5m")
             .amount(200)
             .profitPct(0.03)
-            .strategyExtras({lookBack:55, probabilityFactorLong:0.6,probabilityFactorShort:0.6,squeezeFactor:1.9})
+            .strategyExtras({grids:5, period:200})
             .stopLossPct(0.015)
             .fee(0.002)
             .key("FAKE_KEY")

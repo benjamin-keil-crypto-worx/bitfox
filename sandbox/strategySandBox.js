@@ -1,4 +1,4 @@
-let {ThorsHammer} = require("../engine/BitFox");
+let {DynamicGrid} = require("../engine/BitFox");
 let modules = require("./sandbox-modules");
 
 let engine = modules.getTestEngineForBackTest();
@@ -6,10 +6,10 @@ let engine = modules.getTestEngineForBackTest();
 (async  () =>{
 
     await engine.setupAndLoadClient()
-    engine.applyStrategy(ThorsHammer)
+    engine.applyStrategy(DynamicGrid)
 
     // Set Up Event Handlers 
-    engine.on('SmartAccumulate', (eventArgs) => {
+    engine.on('MultiDivergence', (eventArgs) => {
         console.log(":::::::::::::::::::::::::::::::::::::",eventArgs)
     });
     // Set Up Event Handlers 
