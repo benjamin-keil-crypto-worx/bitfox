@@ -114,7 +114,7 @@ class Strategy {
      * @param profitTarget {Number} the target percentage you want to hit to buy the asset back
      * @return {number}  the estimated buyback price
      */
-    calculateShortProfitTarget(sellPrice, profitTarget){  return sellPrice-(sellPrice*profitTarget);}
+    calculateShortProfitTarget(sellPrice, profitTarget){  return sellPrice * (1/profitTarget);}
 
     /**
      *
@@ -122,7 +122,7 @@ class Strategy {
      * @param profitTarget {Number} the target percentage you want to hit to sell the asset back
      * @return {number}  the estimated sell back price
      */
-    calculateLongProfitTarget(buyPrice, profitTarget){return buyPrice+(buyPrice*profitTarget);}
+    calculateLongProfitTarget(buyPrice, profitTarget){return buyPrice * profitTarget;}
 
     /**
      *
@@ -130,7 +130,7 @@ class Strategy {
      * @param stopTarget {Number} the target percentage for the stop
      * @return {number}  the estimated stop loss price
      */
-    calculateShortStopTarget(sellPrice, stopTarget){  return sellPrice+(sellPrice*stopTarget);}
+    calculateShortStopTarget(sellPrice, stopTarget){  return sellPrice * (1/stopTarget);}
 
     /**
      *
@@ -138,7 +138,7 @@ class Strategy {
      * @param stopTarget {Number} the target percentage for the stop
      * @return {number}  the estimated stop loss price
      */
-    calculateLongStopTarget(buyPrice, stopTarget){return buyPrice-(buyPrice*stopTarget);}
+    calculateLongStopTarget(buyPrice, stopTarget){return buyPrice * stopTarget ;}
 
 
     /**

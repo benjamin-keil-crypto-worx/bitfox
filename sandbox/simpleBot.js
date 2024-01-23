@@ -13,7 +13,7 @@ let {builder, utils, SuperTrend} = require("../engine/BitFox");
         .symbol("ADAUSDT")
         .timeframe("15m")
         .amount(100)
-        .profitPct(0.02)
+        .profitPct(1.02)
         // .fee(0.02)
         .key("FAKE_KEY")
         .secret("FAKE_SECRET")
