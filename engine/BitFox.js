@@ -1160,7 +1160,7 @@ class BitFox extends Service {
      * @returns {Promise<void>} Executes a sell order for long that has reached its maturity.
      */
     async takeProfitShort(ticker, me, oB) {
-        me.funds = ticker.last * me.amount;
+        me.funds = me.sellOrder.price * me.amount;
         me.amount = me.funds / ticker.last;
         let order = (me.life) ?  await me.marketBuyOrder(me.symbol, me.amount, {}) : await me.mockExchange.marketBuyOrder((me.symbol, me.amount, {}));
         me.eventHandler.fireEvent("onTradeComplete", {timestamp:new Date().getTime(), entryOrder:me.sellOrder, exitOrder:order});
@@ -1174,8 +1174,11 @@ class BitFox extends Service {
     async enterShort(me) {
         let oB = await me.fetchOrderBook(me.symbol, 20, {})
         const askPrice = oB.asks[2][0];
-        let orderCall = (me.useLimitOrder) ? "limitSellOrder" : "marketSellOrder"
-        me.sellOrder = (me.life) ? await me[[orderCall]](me.symbol, me.amount, askPrice, {}) : await me.mockExchange[orderCall](me.symbol, me.amount, askPrice, {});
+        if( me.useLimitOrder ) {
+          me.sellOrder = await me.limitSellOrder(me.symbol, me.amount, askPrice, {})
+        }else {
+            me.sellOrder = await  me.marketSellOrder(me.symbol, me.amount, {})
+        }
         me.currentSide = 'sell';
         me.foxStrategy.setState(State.STATE_AWAIT_ORDER_FILLED);
         me.eventHandler.fireEvent("onOrderPlaced", {timestamp:new Date().getTime(), order:me.buyOrder});
@@ -1188,9 +1191,13 @@ class BitFox extends Service {
      */
     async enterLong(me) {
         let oB = await me.fetchOrderBook(me.symbol, 20, {})
-        const bidPrice = oB.bids[2][0];
-        let orderCall = (me.useLimitOrder) ? "limitBuyOrder" : "marketBuyOrder"
-        me.buyOrder = (me.life) ? await  me[orderCall](me.symbol, me.amount, bidPrice, {}) : await me.mockExchange[orderCall](me.symbol, me.amount, bidPrice, {});
+        const bidPrice = oB.bids[1][0];
+        
+        if( me.useLimitOrder ) {
+            me.buyOrder = await me.limitBuyOrder(me.symbol, me.amount, bidPrice, {})
+        } else {
+              me.buyOrder = await  me.marketBuyOrder(me.symbol, me.amount, bidPrice)
+        }
         me.currentSide = 'buy';
         me.foxStrategy.setState(State.STATE_AWAIT_ORDER_FILLED);
         me.eventHandler.fireEvent("onOrderPlaced", {timestamp:new Date().getTime(), order:me.buyOrder});

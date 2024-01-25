@@ -76,7 +76,7 @@ class ExchangeService {
             return this;
         }
         Object.keys(args.requiredCredentials).forEach( key => this.client[key] = args.requiredCredentials[key])
-        this.client.options =args.options || {'defaultType': 'spot', 'adjustForTimeDifference': true,'recvWindow':7000 };
+        this.client.options =args.options || {'defaultType': 'spot', 'adjustForTimeDifference': true,'recvWindow':7000, "createMarketBuyOrderRequiresPrice":true };
         await this.client.loadTimeDifference()
         await this.client.loadMarkets();
         return this;
@@ -234,8 +234,8 @@ class ExchangeService {
      * @param params {any} Optional not used yet
      * @returns {Promise<order>} Returns an order object see ccxt documentation for object structure
      */
-    async marketBuyOrder(symbol,amount,params){
-        return await this.client.createOrder(symbol,'market','buy',amount,params);
+    async marketBuyOrder(symbol,amount,price){
+        return await this.client.createOrder (symbol, 'market', 'buy', amount, price)
     }
 
     /**
@@ -246,7 +246,7 @@ class ExchangeService {
      * @returns {Promise<order>} Returns an order object see ccxt documentation for object structure
      */
     async marketSellOrder(symbol,amount,params){
-        return await this.client.createOrder(symbol,'market','sell',amount,params);
+        return await this.client.createMarketSellOrder(symbol,amount,params);
     }
 
     /**

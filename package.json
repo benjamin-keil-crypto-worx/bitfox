@@ -18,7 +18,7 @@
     "sandbox-indicatorTest": "node sandbox/indicatorTestLoader.js",
     "sandbox-dataLoaderExport": "node sandbox/dataLoaderDataExport.js",
 
-    "sandbox-backTesting": "node sandbox/strategySandBox",
+    "sandbox-backTesting": "node sandbox/simpleBot.js",
     "sandbox-server":"node sandbox/serverSandbox",
     "sandbox-client":"node sandbox/clientSandbox",
     "postinstall": "node postinstall.js",
