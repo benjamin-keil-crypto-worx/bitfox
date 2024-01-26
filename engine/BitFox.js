@@ -930,7 +930,7 @@ class BitFox extends Service {
         let tickerdata = null;
         if(result.state === State.STATE_AWAIT_TAKE_PROFIT){
             tickerdata = {previousClose:ticker.previousClose,last:ticker.last,timestamp:ticker.timestamp,averagePrice:ticker.average, };
-            takeProfitTarget = (me.currentSide === "sell") ? me.foxStrategy.calculateShortProfitTarget(me.sellOrder.price, me.takeProfitPct) : me.foxStrategy.calculateLongProfitTarget(me.buyOrder.price, me.takeProfitPct)
+            takeProfitTarget = (me.currentSide === "sell") ? me.foxStrategy.calculateShortProfitTarget(me.lastShortEntry, me.takeProfitPct) : me.foxStrategy.calculateLongProfitTarget(me.lastLongEntry, me.takeProfitPct)
         }
        
         let info =  {ticker:tickerdata,currentSide:me.currentSide,takeProfitTarget:takeProfitTarget};
