@@ -102,8 +102,9 @@ class SuperTrend extends Strategy{
              * If we are in a BackTesting scenario, use candle and indicator data arry index to access the current data from the sequence
              * Otherwise use the latest data in the last index of the Array!
              */
+            this.nextTrend = (this.nextTrend ==="pending") ? data[isBackTest ? _index : data.length - 1].trend : this.nextTrend;
             if(data[isBackTest ? _index : data.length - 1].trend ==='short'){
-                if(this.biDirectionalTrendSwitch && !["pending","short"].includes(this.nextTrend)){
+                if(this.biDirectionalTrendSwitch && !["short"].includes(this.nextTrend)){
                     return this.getStrategyResult(this.state,{custom:`In trend exhaustion mode waiting for new ${this.nextTrend} trend`,value:data[isBackTest ? _index : data.length - 1].value});
                 } else {
                     if(this.sidePreference === 'short' || (this.sidePreference === 'biDirectional')){
@@ -117,7 +118,7 @@ class SuperTrend extends Strategy{
              * Otherwise use the latest data in the last index of the Array!
              */
             if(data[isBackTest ? _index : data.length - 1].trend ==='long'){
-                if(this.biDirectionalTrendSwitch && !["pending","long"].includes(this.nextTrend)){
+                if(this.biDirectionalTrendSwitch && !["long"].includes(this.nextTrend)){
                     return this.getStrategyResult(this.state,{custom:`In trend exhaustion mode waiting for new ${this.nextTrend} trend`,value:data[isBackTest ? _index : data.length - 1].value});
                 } else {
                     if(this.sidePreference === 'long' || (this.sidePreference === 'biDirectional')){
