@@ -746,6 +746,8 @@ class BitFox extends Service {
         }
         this.mockExchange = (!args.life) ? MockService.getService(args) : null;
         this.eventHandler = EventHandler.getEventHandler();
+        this.lastLongEntry = 0;
+        this.lastShortEntry = 0;
     }
 
     /**
@@ -1090,7 +1092,7 @@ class BitFox extends Service {
      * @returns {Promise<void>} Checks if a current Short position or Trade is in profit.
      */
     async checkIsShortInProfit(ticker, me) {
-        if (ticker.last <= me.foxStrategy.calculateShortProfitTarget(me.sellOrder.price, me.takeProfitPct)) {
+        if (ticker.last <= me.foxStrategy.calculateShortProfitTarget(me.lastShortEntry, me.takeProfitPct)) {
             await this.takeProfit(me);
             me.foxStrategy.setState(State.STATE_TAKE_PROFIT);
         }
@@ -1103,7 +1105,7 @@ class BitFox extends Service {
      * @returns {Promise<void>} Checks if a current Long position or Trade is in profit.
      */
     async checkIsLongInProfit(ticker, me) {
-        if (ticker.last >= me.foxStrategy.calculateLongProfitTarget(me.buyOrder.price, me.takeProfitPct)) {
+        if (ticker.last >= me.foxStrategy.calculateLongProfitTarget(me.lastLongEntry, me.takeProfitPct)) {
             await this.takeProfit(me);
             me.foxStrategy.setState(State.STATE_TAKE_PROFIT);
         }
@@ -1117,9 +1119,9 @@ class BitFox extends Service {
      * @returns {Promise<void>} executes a stop loss order for a long position.
      */
     async stopLossLong(ticker, me, oB) {
-        me.amount = me.buyOrder.amount;
+        me.amount = me.lastLongEntry = me.amounter.amount;
         me.funds = (ticker.last * me.buyOrder.amount)
-        let order = (me.life) ? await me.marketSellOrder(me.symbol, me.amount, {}) :  await me.mockExchange.marketBuyOrder((me.symbol, me.amount, {}));
+        let order = (me.life) ? await me.marketSellOrder(me.symbol, me.amount, {}) :  await me.mockExchange.marketSellOrder((me.symbol, me.amount, {}));
         me.eventHandler.fireEvent("onStopLossTriggered", {timestamp:new Date().getTime(), entryOrder:me.buyOrder, exitOrder:order});
     }
 
@@ -1131,9 +1133,9 @@ class BitFox extends Service {
      * @returns {Promise<void>} executes a stop loss order for a short position.
      */
     async stopLossShort(ticker, me, oB) {
-        me.funds = ticker.last * me.amount;
+        me.funds = ticker.last * me.sellOrder.amount;
         me.amount = me.funds / ticker.last;
-        let order = (me.life) ?  await me.marketBuyOrder(me.symbol, me.amount, {}) : await me.mockExchange.marketBuyOrder((me.symbol, me.amount, {}));
+        let order = (me.life) ?  await me.marketBuyOrder(me.symbol, me.amount, ticker.last) : await me.mockExchange.marketBuyOrder((me.symbol, me.amount, ticker.last));
         me.eventHandler.fireEvent("onStopLossTriggered", {timestamp:new Date().getTime(), entryOrder:me.sellOrder, exitOrder:order});
 
     }
@@ -1160,9 +1162,9 @@ class BitFox extends Service {
      * @returns {Promise<void>} Executes a sell order for long that has reached its maturity.
      */
     async takeProfitShort(ticker, me, oB) {
-        me.funds = me.sellOrder.price * me.amount;
+        me.funds = me.lastShortEntry * me.sellOrder.amount;
         me.amount = me.funds / ticker.last;
-        let order = (me.life) ?  await me.marketBuyOrder(me.symbol, me.amount, {}) : await me.mockExchange.marketBuyOrder((me.symbol, me.amount, {}));
+        let order = (me.life) ?  await me.marketBuyOrder(me.symbol, me.amount, ticker.last) : await me.mockExchange.marketBuyOrder((me.symbol, me.amount, ticker.last));
         me.eventHandler.fireEvent("onTradeComplete", {timestamp:new Date().getTime(), entryOrder:me.sellOrder, exitOrder:order});
     }
 
@@ -1179,6 +1181,7 @@ class BitFox extends Service {
         }else {
             me.sellOrder = await  me.marketSellOrder(me.symbol, me.amount, {})
         }
+        me.lastShortEntry = askPrice;
         me.currentSide = 'sell';
         me.foxStrategy.setState(State.STATE_AWAIT_ORDER_FILLED);
         me.eventHandler.fireEvent("onOrderPlaced", {timestamp:new Date().getTime(), order:me.buyOrder});
@@ -1191,17 +1194,18 @@ class BitFox extends Service {
      */
     async enterLong(me) {
         let oB = await me.fetchOrderBook(me.symbol, 20, {})
-        const bidPrice = oB.bids[1][0];
+        let bidPrice = oB.bids[1][0];
         
         if( me.useLimitOrder ) {
+            const bidPrice = oB.bids[2][0];
             me.buyOrder = await me.limitBuyOrder(me.symbol, me.amount, bidPrice, {})
         } else {
               me.buyOrder = await  me.marketBuyOrder(me.symbol, me.amount, bidPrice)
         }
+        me.lastLongEntry = bidPrice;
         me.currentSide = 'buy';
         me.foxStrategy.setState(State.STATE_AWAIT_ORDER_FILLED);
         me.eventHandler.fireEvent("onOrderPlaced", {timestamp:new Date().getTime(), order:me.buyOrder});
-
     }
 
     /**
