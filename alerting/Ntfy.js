@@ -1,3 +1,4 @@
+let axios = require('axios');
 class Ntfy {
 
     static factory(options) { return new Ntfy(options); }
@@ -9,7 +10,7 @@ class Ntfy {
     }
 
      notify(body){
-        return axios.post(`${this.address()}/${this.topic}`, {singal:body}, {
+        return axios.post(`${this.address.trim()}/${this.topic}`, {singal:body}, {
             headers: {
               'Authorization': `Basic ${this.token}`,
               'Content-Type': 'text/plain', // Set the Content-Type for plain text
