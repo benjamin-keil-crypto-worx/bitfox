@@ -29,8 +29,8 @@ class Strategy {
      * @param args {strategyConfiguration} Strategy Specific arguments for set up
      * @constructor
      */
-    constructor(args=null){
-
+    constructor(args=null, handler = null){
+        this.eventHandler = handler;
         this.states=State;
         this.state = this.states.STATE_PENDING;
         this.indicators = Indicators;

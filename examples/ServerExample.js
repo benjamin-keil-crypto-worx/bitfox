@@ -1,9 +1,8 @@
-let modules = require("./sandbox-modules");
+let helper = require("./helpers/helper");
 
-let engine = modules.getEngineForServer();
+let engine = helper.getEngineForServer();
 
 (async  () =>{
-
     await engine.setupAndLoadClient()
     await engine.startServer();
 })();

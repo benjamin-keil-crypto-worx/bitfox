@@ -1,5 +1,4 @@
-let { Client } = require("../server/client");
-
+let { Client } = require("bitfox").bitfox;
 
 
 let client = Client.getInstance();

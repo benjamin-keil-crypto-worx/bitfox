@@ -1,4 +1,4 @@
-let {builder, utils, SuperTrend} = require("../engine/BitFox");
+let {builder, SuperTrend} = require("bitfox").bitfox;
 
 (async () =>{
     // Initialize the Engine via options instance 
@@ -15,9 +15,9 @@ let {builder, utils, SuperTrend} = require("../engine/BitFox");
         .amount(100)
         .profitPct(1.02)
         // .fee(0.02)
-        .key("FAKE_KEY")
-        .secret("FAKE_SECRET")
-        .life(false)
+        .key("YOUR_API_KEY")
+        .secret("YOUR_API_SECRET")
+        .life(true)
         .interval(60)
         .build(); 
         
@@ -27,7 +27,8 @@ let {builder, utils, SuperTrend} = require("../engine/BitFox");
     // Leverage A Strategy from botfoxes strategy repository
     engine.applyStrategy(SuperTrend)
     
-    // Set Up Event Handlers 
+    /*  ---------------   Set Up Event Handlers (Optional) ----------------  */
+
     engine.on('onMessage', (eventArgs) => {
         console.log(eventArgs)
     });
@@ -46,13 +47,7 @@ let {builder, utils, SuperTrend} = require("../engine/BitFox");
     engine.on('onStopLossTriggered', (eventArgs) => {
         console.log(eventArgs)
     });
-    // SetUp Custom Event Handler (You need to fire the event yourself BotFox doesn't know about your Custom Event")
-    engine.on('MyCustomEvent', (eventArgs) => {
-        console.log(eventArgs)
-    });
-    engine.on('onStrategyResponse', (eventArgs) => {
-        console.log(eventArgs)
-    });
+
     
     // Start The BotFox Engine
     try {
