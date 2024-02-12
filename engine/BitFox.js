@@ -631,6 +631,11 @@ class EngineBuilder {
         return this
     }
 
+    slackChannel(channel){
+        this.validateTypes(channel, "channel", "string");
+        this.args.slackChannel = channel;
+    }
+
     ntfyAddress(ntfyAddress){
         this.validateTypes(ntfyAddress, "ntfyAddress", "string");
         this.args.ntfyAddress = ntfyAddress;
@@ -838,7 +843,7 @@ class BitFox extends Service {
      * @param strategy {Strategy} Apply a Target Strategy for the Engine
      */
     applyStrategy(strategy) {
-        this.foxStrategy = strategy.init(this.params);
+        this.foxStrategy = strategy.init(this.params, this.eventHandler);
         this.backtest ? this.setTestEngine(this.params) : null;
         this.isStrategy = true;
     }
