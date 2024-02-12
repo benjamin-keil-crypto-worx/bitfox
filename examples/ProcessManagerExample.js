@@ -1,13 +1,13 @@
-let modules = require("./sandbox-modules");
+let helper = require("./helpers/helper");
 
-let {BitFoxEngine, Bollinger, ProcessManager} = require("../engine/BitFox");
+let {Bollinger, ProcessManager} = require("bitfox").bitfox
 
 
 /**
  * retrieve the test engine
- */
+*/
 
-let engine = modules.getTestEngine();
+let engine = helper.getLifePaperTradeEngine();
 
 (async  () =>{
 
@@ -17,5 +17,6 @@ let engine = modules.getTestEngine();
     engine.on('onStrategyResponse', (eventArgs) => {
         console.log(eventArgs)
     });
+    
     engine.setAsProcess(ProcessManager.getProcessManager().setProcessSchedule("1m"))
 })();

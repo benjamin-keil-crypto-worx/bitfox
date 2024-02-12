@@ -1,6 +1,17 @@
-let {DataLoaderBuilder,Strategy,utils,getModels} = require("../engine/BitFox");
+/*
+What is happening here? 
+A simple example to show case how we can create Data Loader instance and leverage bitfox Engine inbuild Indicators and write the data to a file
+    
+    1. We leverage the Dataloader builder interface to create a DataLoader Engine
+    2. We Set up a few Headers 
+    3. We calculate the Indicator Data
+    4. We write the Indicator Data to a csv file.
+*/
+
+let {DataLoaderBuilder,Strategy,utils} = require("bitfox").bitfox;
 const fs = require('fs');
 
+// Instantiate the Data Loader 
 let dataLoader = DataLoaderBuilder()
     .setExchangeName("bybit")
     .setPollRate(100)
@@ -11,6 +22,7 @@ let dataLoader = DataLoaderBuilder()
     .setVerbose(false)
     .build();
 
+// Lets Create Some Headers    
 let headers=  []
 headers.push("open", "high", "low", "close", "volume", 
 "priceChange",
@@ -38,17 +50,19 @@ headers.push("open", "high", "low", "close", "volume",
 "stoch_d", 
 "vwap");
 
+
+
 let csvBuff = [];
+
 function calculatePriceChangePercentage(openPrice, closingPrice) {
     // Ensure the input prices are numeric
     openPrice = parseFloat(openPrice);
-    closingPrice = parseFloat(closingPrice);
-  
+    closingPrice = parseFloat(closingPrice);  
     // Calculate the price change percentage
     const priceChangePercentage = ((closingPrice - openPrice) / openPrice) * 100;
-  
     return priceChangePercentage;
 }
+
 const exportData = async () =>{
     let indicatorData = {}
     await dataLoader.setUpClient();
@@ -78,7 +92,6 @@ const exportData = async () =>{
     });
     })
     
-    let minDataLength = 100000;
     indicatorData["emaSlow"] = Strategy.INDICATORS["EMAIndicator"].getData(o,h,l,c,v,{period:200},buffer);
     indicatorData["emaFast"] = Strategy.INDICATORS["EMAIndicator"].getData(o,h,l,c,v,{period:55},buffer);
     indicatorData["smaSlow"] = Strategy.INDICATORS["SmaIndicator"].getData(o,h,l,c,v,{period:200},buffer);
@@ -110,29 +123,7 @@ const exportData = async () =>{
     });
 
     console.log(headers);
-    // "open", "high", "low", "close", "volume", "emaSlow",
-    // "emaFast",
-    // "smaSlow",
-    // "smaFast",
-    // "zmaSlow",
-    // "zmaFast",
-    // "rsi",
-    // "atr",
-    // "mfi",
-    // "macd",
-    // "macd_signal",
-    // "macd_hist",
-    // "boll_pb",
-    // "boll_upper",
-    // "boll_lower",
-    // "boll_middle",
-    // "adx",
-    // "adx_pdi", 
-    // "adx_mdi", 
-    // "superTrend",
-    // "stoch_k", 
-    // "stoch_d", 
-    // "vwap");
+
     csvBuff.push(headers.join(","))
     o.forEach((open,index) => {
         // zma has the highest throw away or period so we use this 
