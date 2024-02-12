@@ -1,6 +1,6 @@
 {
   "name": "bitfox",
-  "version": "0.0.7",
+  "version": "1.0.0",
   "description": "Multi Exchange Crypto Currency Trading bot, Data Analysis Library and Strategy Back testing Engine",
   "main": "index.js",
   "engines": {
@@ -16,8 +16,9 @@
     "test-verbose": "mocha --timeout 5000 --recursive  --reporter doc > test-results/report.html",
     "sandbox-dataLoader": "node sandbox/dataLoaderSandbox.js",
     "sandbox-indicatorTest": "node sandbox/indicatorTestLoader.js",
+    "sandbox-dataLoaderExport": "node sandbox/dataLoaderDataExport.js",
 
-    "sandbox-backTesting": "node sandbox/strategySandBox",
+    "sandbox-backTesting": "node sandbox/simpleBot.js",
     "sandbox-server":"node sandbox/serverSandbox",
     "sandbox-client":"node sandbox/clientSandbox",
     "postinstall": "node postinstall.js",

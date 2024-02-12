@@ -42,8 +42,9 @@ class SuperTrend extends Strategy{
      */
     constructor(args) {
         super(args);
-        this.setContext("SuperTrend")
-
+        this.setContext("SuperTrend");
+        this.biDirectionalTrendSwitch = (this.sidePreference === 'biDirectional');
+        this.nextTrend ="pending";
     }
 
     /**
@@ -82,6 +83,7 @@ class SuperTrend extends Strategy{
      */
     async run(_index=0, isBackTest=false){
 
+        
         /**
          * First Check to internal State of the Strategy if we are in a enter long|short state set the state to
          * a state signalling that we are awaiting confirmation from the BitFoxEngine that the order is filled!
@@ -100,9 +102,15 @@ class SuperTrend extends Strategy{
              * If we are in a BackTesting scenario, use candle and indicator data arry index to access the current data from the sequence
              * Otherwise use the latest data in the last index of the Array!
              */
+            this.nextTrend = (this.nextTrend ==="pending") ? data[isBackTest ? _index : data.length - 1].trend : this.nextTrend;
             if(data[isBackTest ? _index : data.length - 1].trend ==='short'){
-                if(this.sidePreference === 'short' || (this.sidePreference === 'biDirectional')){
-                    this.state = this.states.STATE_ENTER_SHORT;
+                if(this.biDirectionalTrendSwitch && !["short"].includes(this.nextTrend)){
+                    return this.getStrategyResult(this.state,{custom:`In trend exhaustion mode waiting for new ${this.nextTrend} trend`,value:data[isBackTest ? _index : data.length - 1].value});
+                } else {
+                    if(this.sidePreference === 'short' || (this.sidePreference === 'biDirectional')){
+                        this.state = this.states.STATE_ENTER_SHORT;
+                        this.nextTrend = "long";
+                    }
                 }
             }
             /**
@@ -110,9 +118,15 @@ class SuperTrend extends Strategy{
              * Otherwise use the latest data in the last index of the Array!
              */
             if(data[isBackTest ? _index : data.length - 1].trend ==='long'){
-                if(this.sidePreference === 'long' || (this.sidePreference === 'biDirectional')){
-                    this.state = this.states.STATE_ENTER_LONG;
+                if(this.biDirectionalTrendSwitch && !["long"].includes(this.nextTrend)){
+                    return this.getStrategyResult(this.state,{custom:`In trend exhaustion mode waiting for new ${this.nextTrend} trend`,value:data[isBackTest ? _index : data.length - 1].value});
+                } else {
+                    if(this.sidePreference === 'long' || (this.sidePreference === 'biDirectional')){
+                        this.state = this.states.STATE_ENTER_LONG;
+                        this.nextTrend = "short";
+                    }
                 }
+               
             }
             return this.getStrategyResult(this.state,{value:data[isBackTest ? _index : data.length - 1].value});
         }
