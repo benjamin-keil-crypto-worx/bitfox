@@ -1,6 +1,6 @@
 {
   "name": "bitfox",
-  "version": "0.0.7",
+  "version": "1.0.0",
   "description": "Multi Exchange Crypto Currency Trading bot, Data Analysis Library and Strategy Back testing Engine",
   "main": "index.js",
   "engines": {

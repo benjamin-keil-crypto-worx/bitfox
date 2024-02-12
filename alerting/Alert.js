@@ -1,6 +1,7 @@
 const utils = require("../lib/utility/util");
 const {Email} = require("./Email");
 const {Slack} = require("./Slack");
+const {Ntfy} = require("./Ntfy");
 const {Telegram} = require("./Telegram");
 const {State} = require("../lib/states/States");
 const Indicators = require("../lib/indicators/Indicators")
@@ -8,7 +9,7 @@ const Indicators = require("../lib/indicators/Indicators")
 /**
  * Class Alert
  <pre>
- * This Class is the Factory Class for Email,Telegram & Slack Notification Instances
+ * This Class is the Factory Class for Email,Telegram,Ntfy & Slack Notification Instances
  * It also acts as the base Class for all Alerting instances that can be executed just like Strategies
  </pre>
  */
@@ -23,6 +24,7 @@ class Alert {
         this.email = null;
         this.telegramBot = null;
         this.slack = null;
+        this.ntfy = null;
         this.states =  State;
         this.getNotificationInstance(args.type);
 
@@ -34,6 +36,7 @@ class Alert {
      */
     getNotificationInstance(type){
         switch ( type.toLowerCase()) {
+            case "ntfy":{this.ntfy =  Ntfy.factory(this.args)} break;
             case "email":{this.email = Email.factory() }break;
             case "slack":{this.slack =  Slack.factory(this.args)}break;
             case "telegram":{global.tb = (global.tb === undefined) ? Telegram.factory(this.args) : global.tb; this.telegramBot = global.tb}break;
@@ -48,6 +51,7 @@ class Alert {
      */
     async notify(args, message){
         switch (this.args.type.toLowerCase()) {
+            case "ntfy":{await this.ntfy.notify(message);} break;
             case "email":{
                 this.email.setOptions(this.args);
                 this.email.createMessage(this.args,message);

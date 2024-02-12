@@ -577,8 +577,8 @@ class EngineBuilder {
      */
     type(type) {
         this.validateTypes(type, "type", "string");
-        if(!["email","slack","telegram"].includes(type.toLowerCase())){
-            Errors.UnsupportedExchangeOptionError("Invalid Alerting Type supported Types are (Email|Slack|Telegram)")
+        if(!["email","slack","telegram","ntfy"].includes(type.toLowerCase())){
+            Errors.UnsupportedExchangeOptionError("Invalid Alerting Type supported Types are (Email|Slack|Telegram|Ntfy)")
         }
         this.args.type = type;
         return this;
@@ -629,6 +629,17 @@ class EngineBuilder {
         this.validateTypes(to, "to", "string");
         this.args.to = to; 
         return this
+    }
+
+    ntfyAddress(ntfyAddress){
+        this.validateTypes(ntfyAddress, "ntfyAddress", "string");
+        this.args.ntfyAddress = ntfyAddress;
+    }
+
+    // Alerting & Notification Ntfy topic to publish the Notification to
+    ntfyTopic(ntfyTopic){
+        this.validateTypes(ntfyAddress, "ntfyTopic", "ntfyTopic");
+        this.args.ntfyTopic = ntfyTopic;
     }
 
     /**
