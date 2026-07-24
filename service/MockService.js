@@ -107,38 +107,38 @@ class MockService {
      * @returns {Number} HTTP request Timout
      */
 
-    timeout(){ return super.timeout() }
+    timeout(){ return this.exchange.timeout() }
 
     /**
      *
      * @returns {Number} API Request Limit on the target exchange
      */
-    rateLimit(){ return super.rateLimit() }
+    rateLimit(){ return this.exchange.rateLimit() }
 
     /**
      *
      * @returns {marketStructure} Returns the market structure of the given exchange
      */
-    markets(){return super.markets() }
+    markets(){return this.exchange.markets() }
 
     /**
      *
      * @returns {Array<string>} A list of available Symbols on the target exchange
      */
-    symbols(){return super.symbols() }
+    symbols(){return this.exchange.symbols() }
 
     /**
      *
      * @returns {currency} A object with available currencies on the exchange please ccxt for object structure
      */
-    currencies(){return super.currencies() }
+    currencies(){return this.exchange.currencies() }
 
     /**
      *
      * @returns {Promise<unknown>} Helper method to enforce rate limit wait periods during excessive api usage
      */
     waitForRateLimit(){
-       return super.waitForRateLimit()
+       return this.exchange.waitForRateLimit()
     }
 
     /**
@@ -263,8 +263,7 @@ class MockService {
      * @returns {Promise<*>} An Array of Arrays with open,close,highs,low and volume data
      */
     async fetchOHLCV(symbol,timeframe){
-        //this.client.parse8601("");
-        return await this.exchange.fetchOHLCV(symbol, timeframe, null, this.candleLimit);
+        return await this.exchange.fetchOHLCV(symbol, timeframe);
     }
 
     /**
@@ -275,7 +274,7 @@ class MockService {
      * @returns {Promise<*>} An Array of Arrays with open,close,highs,low and volume data
      */
     async fetchOHLCVSince(symbol,timeframe, since){
-        return await this.exchange.fetchOHLCV(symbol, timeframe, since, this.candleLimit);
+        return await this.exchange.fetchOHLCVSince(symbol, timeframe, since);
     }
 
     /**

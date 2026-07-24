@@ -82,7 +82,6 @@ class BackTest {
      */
     constructor(strategy, args) {
 
-
         this.strategy = strategy;
         this.args = args;
         this.mockService =Mock.getService(args)
@@ -97,8 +96,18 @@ class BackTest {
         this.minBarCount = 1000000;
         this.stopOrderCount = 0;
         this.tradeSuccessCount = 0;
+        this.tradeLossCount = 0;
+        this.totalQuoteProfit = 0;
+        this.totalQuoteLoss = 0;
+        this.peakEquity = 0;
+        this.maxDrawdownPct = 0;
+        this.equityCurve = [];
 
+        this.makerFee = args.makerFee || 0.001;
+        this.takerFee = args.takerFee || 0.001;
+        this.slippage = args.slippage || 0.0005;
 
+        this.initialFunds = this.args.amount || 0;
         this.adjustForBalance = false;
         this.maxLongDrawDown = 0;
         this.maxShortDrawDown = 0;
@@ -141,67 +150,119 @@ class BackTest {
             let currentCandles = buff.splice(0, 1)
             let result = await this.strategy.run(indexCount, true);
             await this.processResult(result, indexCount, currentCandles[0]);
+            this.trackEquity(currentCandles[0]);
             indexCount++;
         }
 
         if(this.tradeHistory.length<=0){
+            Log.yellow("No trades were executed during the backtest period.");
             return false;
         }
         let resultString = JSON.stringify(this.tradeHistory);
         this.writeResultFile(resultString, this.strategy.getContext().context );
         let copy = JSON.parse(resultString);
 
-        let avgBuff = [];
-        let avgBuff2 = [];
+        let avgQuoteProfit = [];
+        let avgBaseProfit = [];
+        let returns = [];
         if (this.hasExitOrder()) {
             copy.forEach((trade) => {
                 if (trade.exitTimeStamp != null) {
-                    let approximatedQuoteProfit =  Math.abs((trade.exitOrder.amount * trade.exitOrder.price) -(trade.entryOrder.amount * trade.entryOrder.price) );
-                    let approximatedBaseProfit  = Math.abs(trade.exitOrder.amount - trade.entryOrder.amount);
-                    avgBuff.push(Math.abs(approximatedQuoteProfit));
-                    avgBuff2.push(Math.abs(approximatedBaseProfit));
-                    
-                    Log.trade(`Entry Time: ${trade.entryTimestamp} Exit Time ${trade.exitTimeStamp}`);
-                    Log.log(`Entry Order Price: ${trade.entryOrder.price} Exit Order price @ ${trade.exitOrder.price}`);
-                    Log.log(`Trade Side: ${trade.entryOrder.side === 'sell' ? 'Short' : 'Long'} `);
+                    let entryValue = trade.entryOrder.amount * trade.entryOrder.price;
+                    let exitValue = trade.exitOrder.amount * trade.exitOrder.price;
+                    let isLong = trade.entryOrder.side === 'buy';
+                    let rawPnl = isLong ? (exitValue - entryValue) : (entryValue - exitValue);
+                    let pnlAfterFees = rawPnl - (entryValue * this.takerFee) - (exitValue * this.takerFee);
+                    let tradeReturn = pnlAfterFees / entryValue;
+
+                    returns.push(tradeReturn);
+                    this.totalQuoteProfit += (pnlAfterFees > 0 ? pnlAfterFees : 0);
+                    this.totalQuoteLoss += (pnlAfterFees < 0 ? Math.abs(pnlAfterFees) : 0);
+
+                    let approximatedQuoteProfit = Math.abs(exitValue - entryValue);
+                    let approximatedBaseProfit = Math.abs(trade.exitOrder.amount - trade.entryOrder.amount);
+                    avgQuoteProfit.push(approximatedQuoteProfit);
+                    avgBaseProfit.push(approximatedBaseProfit);
+
+                    Log.trade(`Entry: ${trade.entryTimestamp} Exit: ${trade.exitTimeStamp}`);
+                    Log.log(`Side: ${isLong ? 'Long' : 'Short'} Entry: ${trade.entryOrder.price} Exit: ${trade.exitOrder.price}`);
                     if(trade.stopTriggered){
                         Log.short(`Stop Triggered`);
-                        this.stopOrderCount = this.stopOrderCount+1;
+                        this.stopOrderCount++;
+                    } else {
+                        this.tradeSuccessCount++;
                     }
-                    else{
-                        this.tradeSuccessCount = this.tradeSuccessCount+1;
-                    }
-                    Log.log(`Total Bar Count: ${trade.totalBars}`);
-                    Log.log(`Approximated Quote Profit: ${approximatedQuoteProfit.toFixed(9)}`);
-                    Log.log(`Approximated Base  Profit: ${approximatedBaseProfit.toFixed(9)}`);
-                    Log.log(`Max Draw Down: ${trade.maxDrawDown}`);
-                    let unrealizedQuoteLoss = Math.abs((trade.maxDrawDown*trade.amount)-trade.funds) 
-                    let unrealizedBaseLoss =  unrealizedQuoteLoss / trade.maxDrawDown;
-                    let adjustUnrealizedLoss = (trade.entryOrder.side === 'sell') ?  unrealizedBaseLoss : unrealizedQuoteLoss; 
-
-                    Log.log(`Unrealized Losses Drawdown: ${adjustUnrealizedLoss.toFixed(9)}`);
-                    Log.log(`Amount: ${trade.amount}`);
-                    Log.log(`Funds: ${trade.funds}`);
+                    Log.log(`Bars: ${trade.totalBars} PnL: ${pnlAfterFees.toFixed(8)} (${(tradeReturn*100).toFixed(2)}%)`);
+                    Log.log(`Max DD: ${trade.maxDrawDown}`);
                     console.log();
                 }
             })
-
-            Log.yellow(`Average Quote Profit: ${util.average(avgBuff)}`);
-            Log.yellow(`Average Base Profit: ${util.average(avgBuff2)}`);
-
         }
-        let funds = this.tradeHistory[this.tradeHistory.length-1].funds;
-        Log.yellow(`Total Trades : ${this.tradeHistory.length}`);
-        this.tradeHistory.length >= 2 ? Log.yellow(`Starting Funds: ${this.tradeHistory[0].funds} Current Funds ${funds}`) : null;
-        this.tradeHistory.length >= 2 ? Log.yellow(`Starting Amount: ${this.tradeHistory[0].amount} Current Amount ${this.tradeHistory[this.tradeHistory.length - 1].amount}`) : null;
-        Log.yellow(`Maximum Bars  Per Trade: ${this.maxBarCount}`);
-        Log.yellow(`Minimum Bars Per Trade: ${this.minBarCount}`);
-        let tradesLength = (this.tradeHistory[this.tradeHistory.length-1].exitOrder !== null) ? this.tradeHistory.length : this.tradeHistory.length-1;
-        let successRate = (this.tradeSuccessCount / tradesLength) * 100;
-        Log.yellow(`Number Stop Orders Triggered : ${this.stopOrderCount}`);
-        Log.yellow(`Number of Successful Trades : ${this.tradeSuccessCount}`);
-        Log.yellow(`Overall Success Rate : ${successRate} %`);
-        this.tradeHistory[this.tradeHistory.length-1].exitOrder === null ? console.log("Ongoing Trade \n",JSON.stringify(this.tradeHistory[this.tradeHistory.length-1].entryOrder,null,2)) : null;
+
+        this.calculatePerformanceMetrics(copy, returns, avgQuoteProfit, avgBaseProfit);
+        return true;
+    }
+
+    trackEquity(currentCandle){
+        if(!this.funds) return;
+        this.equityCurve.push(this.funds);
+        if(this.funds > this.peakEquity){
+            this.peakEquity = this.funds;
+        }
+        if(this.peakEquity > 0){
+            let dd = (this.peakEquity - this.funds) / this.peakEquity;
+            if(dd > this.maxDrawdownPct){
+                this.maxDrawdownPct = dd;
+            }
+        }
+    }
+
+    calculatePerformanceMetrics(trades, returns, avgQuoteProfit, avgBaseProfit){
+        let totalTrades = trades.length;
+        let completedTrades = trades.filter(t => t.exitTimeStamp != null).length;
+        let wins = this.tradeSuccessCount;
+        let losses = completedTrades - wins;
+        let winRate = completedTrades > 0 ? (wins / completedTrades) * 100 : 0;
+        let profitFactor = this.totalQuoteLoss > 0 ? this.totalQuoteProfit / this.totalQuoteLoss : (this.totalQuoteProfit > 0 ? Infinity : 0);
+        let avgReturn = returns.length > 0 ? util.average(returns) : 0;
+
+        let sharpeRatio = 0;
+        if(returns.length > 1){
+            let mean = util.average(returns);
+            let variance = returns.reduce((sum, r) => sum + (r - mean) ** 2, 0) / (returns.length - 1);
+            let stdDev = Math.sqrt(variance);
+            sharpeRatio = stdDev > 0 ? (mean / stdDev) * Math.sqrt(365) : 0;
+        }
+
+        let startingFunds = this.initialFunds;
+        let endingFunds = trades.length > 0 ? trades[trades.length - 1].funds : 0;
+        let totalReturnPct = startingFunds > 0 ? ((endingFunds - startingFunds) / startingFunds) * 100 : 0;
+
+        Log.yellow(`========== PHOENIX BACKTEST RESULTS ==========`);
+        console.log();
+        Log.yellow(`Total Trades: ${totalTrades}`);
+        Log.yellow(`Completed Trades: ${completedTrades}`);
+        Log.yellow(`Wins: ${wins}  Losses: ${losses}`);
+        Log.yellow(`Win Rate: ${winRate.toFixed(2)}%`);
+        console.log();
+        Log.yellow(`Starting Capital: ${startingFunds.toFixed(4)}`);
+        Log.yellow(`Ending Capital: ${endingFunds.toFixed(4)}`);
+        Log.yellow(`Total Return: ${totalReturnPct.toFixed(2)}%`);
+        console.log();
+        Log.yellow(`Avg Return Per Trade: ${(avgReturn * 100).toFixed(2)}%`);
+        Log.yellow(`Profit Factor: ${profitFactor === Infinity ? '∞' : profitFactor.toFixed(2)}`);
+        Log.yellow(`Sharpe Ratio (annualized): ${sharpeRatio.toFixed(2)}`);
+        Log.yellow(`Max Drawdown: ${(this.maxDrawdownPct * 100).toFixed(2)}%`);
+        console.log();
+        Log.yellow(`Stop Losses Triggered: ${this.stopOrderCount}`);
+        Log.yellow(`Avg Quote Profit: ${avgQuoteProfit.length > 0 ? util.average(avgQuoteProfit).toFixed(8) : 'N/A'}`);
+        Log.yellow(`Avg Bars Per Trade: ${util.average(this.barAvgCount).toFixed(1)}`);
+        Log.yellow(`Max Bars: ${this.maxBarCount}  Min Bars: ${this.minBarCount}`);
+        console.log();
+        Log.yellow(`Fee Model: Maker ${(this.makerFee*100).toFixed(3)}% / Taker ${(this.takerFee*100).toFixed(3)}%`);
+        Log.yellow(`Slippage: ${(this.slippage*100).toFixed(3)}%`);
+        console.log();
+        Log.yellow(`================================================`);
     }
 
     /**
@@ -232,13 +293,13 @@ class BackTest {
         switch (result.state) {
             case State.STATE_ENTER_LONG : {
                 this.handleStateLong(currentCandles);
-                if(!this.adjustForBalance) {this.adjustForBalance = false};
+                if(!this.adjustForBalance) {this.adjustForBalance = true};
 
             }
                 break;
             case State.STATE_ENTER_SHORT: {
                 this.handleStateShort(currentCandles);
-                if(!this.adjustForBalance) {this.adjustForBalance = false};
+                if(!this.adjustForBalance) {this.adjustForBalance = true};
             }
                 break;
             case State.STATE_TAKE_PROFIT: {
@@ -368,10 +429,14 @@ class BackTest {
      *                 the Backtest engine will use it later to output Trade and Funding Statistics
      */
     adjustUnrealizedBalance(currentCandles) {
-        let trade = (this.tradeHistory.length > 0) ? this.tradeHistory[this.tradeHistory.length - 1] : null;
-        let {funds, amount} = this.strategy.determineUnrealizedBalance(trade, currentCandles, this.args.amount);
-        this.args.amount = amount;
-        this.funds = funds;
+        let trade = this.tradeHistory[this.tradeHistory.length - 1];
+        if(!trade || !trade.entryOrder || !trade.exitOrder) return;
+        let entryValue = trade.entryOrder.amount * trade.entryOrder.price;
+        let exitValue = trade.exitOrder.amount * trade.exitOrder.price;
+        let isLong = trade.entryOrder.side === 'buy';
+        let rawPnl = isLong ? (exitValue - entryValue) : (entryValue - exitValue);
+        let pnlAfterFees = rawPnl - (entryValue * this.takerFee) - (exitValue * this.takerFee);
+        this.funds += pnlAfterFees;
     }
 
     /**
@@ -381,12 +446,10 @@ class BackTest {
      *                  the Backtest engine will use it later to output Trade and Funding Statistics
      */
     adjustEntryBalance(currentCandles) {
-        if(this.adjustForBalance){
-            this.args.amount =  (this.funds / currentCandles[4]);
+        if(this.funds === null){
+            this.funds = this.initialFunds;
+            this.args.amount = this.initialFunds / currentCandles[4];
         }
-        let {funds, amount} = this.strategy.determineEntryBalance(currentCandles, this.args.amount);
-        this.args.amount = amount;
-        this.funds = funds;
     }
 
     /**
@@ -431,30 +494,22 @@ class BackTest {
      * @returns {void}  this method executes a fictional buy order
      */
     executeBuyOrder(currentCandles, currentTrade) {
-        // add exit buy order
-        let buyBackAmount = this.funds / currentCandles[3];
-        currentTrade.exitOrder = this.mockService.marketBuyOrder(this.args.symbol,  buyBackAmount, currentCandles[3]);
-        this.adjustUnrealizedBalance(currentCandles)
+        let exitPrice = currentCandles[3];
+        let exitAmount = this.args.amount;
+        currentTrade.exitOrder = this.mockService.marketBuyOrder(this.args.symbol, exitAmount, exitPrice);
+        this.adjustUnrealizedBalance(currentCandles);
         currentTrade.funds = this.funds;
-        currentTrade.amount = buyBackAmount;
-        this.args.amount = buyBackAmount;
+        currentTrade.amount = exitAmount;
         currentTrade.exitTimeStamp = new Date(currentCandles[0]);
     }
 
-    /**
-     *
-     * @param currentCandles  {Array}  open, high, low, close and volume values
-     * @param currentTrade {any} A internal representation of an ongoing trade
-     * @returns {void}  this method executes a fictional buy order
-     */
     executeSellOrder(currentTrade, currentCandles) {
-        // add exit sell order
-        currentTrade.exitOrder = this.mockService.marketSellOrder(this.args.symbol,  this.args.amount, currentCandles[2],);
-        this.adjustUnrealizedBalance(currentCandles)
-        let newAmount = this.funds / currentCandles[2];
+        let exitPrice = currentCandles[2];
+        let exitAmount = this.args.amount;
+        currentTrade.exitOrder = this.mockService.marketSellOrder(this.args.symbol, exitAmount, exitPrice);
+        this.adjustUnrealizedBalance(currentCandles);
         currentTrade.funds = this.funds;
-        currentTrade.amount = newAmount;
-        this.args.amount = newAmount;
+        currentTrade.amount = exitAmount;
         currentTrade.exitTimeStamp = new Date(currentCandles[0]);
     }
 }

@@ -1,4 +1,4 @@
-let {SuperTrend} = require("bitfox").bitfox;
+let {SuperTrend} = require("../index").bitfox;
 let helper = require("./helpers/helper");
 
 let engine = helper.getTestEngineForBackTest();

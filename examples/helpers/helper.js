@@ -1,4 +1,4 @@
-let {builder} = require("bifox").bitfox;
+let {builder} = require("../../index").bitfox;
 
 /**
  * Instantiate a BitFox Backtest Engine
@@ -94,7 +94,7 @@ module.exports.getEmailNotificationEngine = () =>{
     .notifyOnly(true)
     .notificationToken("Your_token")
     .emailFrom("someone@from_this_email_address.com")
-    .emailto("someone@with_this_email_address.com")
+    .emailTo("someone@with_this_email_address.com")
     .build();
  }
 
