@@ -207,6 +207,16 @@ Edit `.env` to configure:
 - `SYMBOL=ADAUSDT`, `TIMEFRAME=1h`, `AMOUNT=50`
 - Optional: `NOTIFICATION_TYPE=telegram`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
 
+## Skill Files
+
+Detailed agent skill files are in `.agents/skills/` (cross-platform, works with Claude Code, Cursor, Copilot, Windsurf, Cline, and 20+ other tools):
+- `architecture/SKILL.md` — deeper codebase structure and patterns
+- `strategy-development/SKILL.md` — step-by-step strategy creation guide
+- `backtesting/SKILL.md` — running backtests and interpreting metrics
+- `deployment/SKILL.md` — Pi setup, PM2, Telegram notifications
+
+For opencode users, equivalent files are also in `.opencode/skills/`.
+
 ## Known Bugs / Gotchas
 
 - `DynamicGrid.js` has a crash bug (references undefined `data` variable)
