@@ -8,6 +8,7 @@ Method note: all verdicts from 2026-07-31, honest engine (GHBF-26 fills, GHBF-34
 
 | Strategy | Status | Best honest result | Notes (2026-07-31) |
 |---|---|---|---|
+| DonchianTrend | **borderline — 5/6 ship bar** | Pooled OOS PF **1.456** on **334** trades, +43.7% agg | GHBF-40. Walk-forward, 8 symbols 1d, 1% risk sizing. All 8 symbols positive OOS; beats B&H on 4/8; worst-fold DD 4.3%. **Fails "≥3/4 folds non-negative" (2/4)**: folds 2/3 +23.8%/+29.1%, folds 1/4 −3.4%/−5.8%. Do NOT tune to fix this — the failure is the finding |
 | Phoenix | **no-go (watch)** | ADA 4h PF 1.05 / +39.7% | Only honest positive; BTC 4h PF 0.78 → doesn't generalize. 1h PF 0.75–0.80 |
 | Bollinger | **no-go (watch)** | BTC 1d PF 1.20 / +7.1% (n=14!) | Closest to breakeven at 1h (PF 0.97–0.98); tiny 1d sample |
 | Regime | **no-go** | BTC 4h PF 1.07 (vs B&H +272%) | Walk-forward OOS decisively negative (−70% 1h, −201% 4h); train winners unstable |
@@ -24,12 +25,25 @@ Method note: all verdicts from 2026-07-31, honest engine (GHBF-26 fills, GHBF-34
 | MarketMaker | n/a | — | STATE_CONTEXT_INDEPENDENT — incompatible with the backtest engine |
 | Buy-and-hold | **benchmark** | ADA window +63% (1h span) | Beat every strategy in every tested window |
 
+## THE SIZING FINDING (2026-07-31 screening — read this first)
+
+**The engine cannot size positions by risk, and that alone may explain the blanket failure above.** `engine/BackTest.js` trades a fixed notional (`this.args.amount`, reset to `initialFunds / price` at line 481); no strategy can vary size per trade.
+
+Measured on the Donchian candidate below, same trades, only sizing differs:
+
+| Sizing | Result |
+|---|---|
+| Fixed notional (what BitFox does today) | median MaxDD **63%**, worst 92%, 3 of 8 symbols end negative |
+| 1%-of-equity ATR risk sizing | **+122%**, MaxDD **20.4%** |
+
+PF 1.49 and +3.44%/trade under both. Arithmetic edge is not geometric survival. Any future verdict measured under fixed notional is measuring the sizing model as much as the signal. Addressed by GHBF-40.
+
 ## Open leads (ranked — start here, not from scratch)
 
-1. **Mean reversion on high-vol alts** — consistently the closest-to-breakeven sleeve (Bollinger 1h PF 0.97–0.98; Regime range-sleeve ADA PF 0.88). Untested: other alts (SOL, DOGE), volatility-filtered entries, limit-order entries (maker fees halve the cost hurdle).
-2. **Phoenix @ 4h on high-vol alts** — the one honest positive; needs walk-forward + more symbols before it means anything.
-3. **Longer-horizon trend following (1d+, Donchian-style)** — untested with proper ATR position sizing; daily samples are small, needs multi-symbol pooling.
-4. **Maker-side execution** — every verdict above assumes taker fees both legs; limit entries change the cost math materially. Engine support for maker-fee backtests exists (`makerFee` arg) but no strategy uses it.
+1. **Phoenix @ 4h on high-vol alts** — the one honest positive from the earlier sweep; needs walk-forward + more symbols before it means anything. Untouched by the 2026-07-31 screening.
+2. **DonchianTrend fold-1/fold-4 weakness (GHBF-40 follow-up)** — the strategy shipped at 5/6 ship bar; the open question is *why* folds 1 and 4 are negative while 2 and 3 are strongly positive. Fold 4 is the most recent period, which is the uncomfortable direction for the failure. Worth understanding before raising `riskPct` above the 0.01 default. **This is a diagnosis lead, not a licence to re-tune the parameter grid** — the ledger's 2-iteration cap is spent.
+
+**Sizing note for any future candidate:** the DonchianTrend OOS returns (+43.7% aggregate, 1–4% drawdowns) are at the default `riskPct: 0.01`, i.e. ~1% of equity risked per trade. That is a far lower exposure than buy-and-hold's 100%, so "loses to B&H" rows are not like-for-like on absolute return — compare return per unit of drawdown, or state the exposure difference explicitly. Untouched by the 2026-07-31 screening.
 
 ## Rejected approaches (do not retry without new evidence)
 
@@ -37,6 +51,11 @@ Method note: all verdicts from 2026-07-31, honest engine (GHBF-26 fills, GHBF-34
 - Continuous (level-based) trend entries — chase extended trends into stops; edge-triggered was better but insufficient.
 - In-sample parameter tuning — walk-forward showed train winners flip fold to fold; any grid > ~10 configs is curve fitting.
 - Any 1h signal from the classic indicator set on ADA/BTC — the 0.2% round-trip hurdle eats it.
+- **Mean reversion on high-vol alts** (killed 2026-07-31, was lead #1). Bollinger+RSI band-fade, 5 symbols × 4h/1d, entry/stop/target variants: best pooled cell net **−0.04%/trade, PF 0.99, t = −0.10, n=292**. Gross edge before costs was +0.26%/trade — the signal barely clears zero, let alone the 0.3% round trip. Decisively negative at 1d (PF 0.66).
+- **Maker-side / limit-order entries** (killed 2026-07-31, was lead #4). A resting limit at the band fills you *on the way down* and the bar keeps going: gross **−0.41%/trade vs +0.53%** for the same signal entered at the bar close. Adverse selection ≈0.94%/trade dwarfs the ≈0.18%/trade fee saving. Note `makerFee` is dead code anyway — accepted and printed (`BackTest.js:106,287`) but never applied to PnL; both legs always charge `takerFee`.
+- **Pullback-in-trend on short horizons** (killed 2026-07-31, novel idea). Buy dips in an established uptrend (EMA50>EMA200), 8 symbols × 4h, triggers RSI<30/35/40/45, EMA20 touch, BB1.0/1.5, 3-down-closes. PF decays monotonically as the trigger loosens and sample grows: **2.07 (n=53) → 1.20 (n=170) → 1.04 (n=427) → 0.97 (n=881) → 0.80 (n=1895)** — a textbook noise curve. Long-only inverted the sign (PF 0.67) while bidirectional was 1.04, another noise signature. Best real-sample cell (BB1.5, n=705) was gross +0.53% = 1.8× the cost hurdle, below the 3× rule, t=1.50.
+
+**Method note for the three kills above:** offline statistical probes (no engine), conservative fills — entry at signal-bar close, exit at bar close, 0.2% taker both legs + 0.1% slippage. Probe scripts were scratchpad-only and not committed; the decay tables above are the reusable result.
 
 ## Ship bar (hard targets — ALL required before a strategy is called good)
 

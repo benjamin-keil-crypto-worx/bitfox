@@ -7,6 +7,7 @@ let {MfiMacd} = require("../strategies/MfiMacd");
 let {SmartAccumulate} = require("../strategies/SmartAccumulate");
 let {ZemaCrossOver} = require("../strategies/ZemaCrossOver");
 let {ThorsHammer} = require("../strategies/ThorsHammer");
+let {DonchianTrend} = require("../strategies/DonchianTrend");
 let {DataLoaderEngine} = require("../engine/DataLoader");
 let {BackTestEngine} = require("../engine/BackTest");
 
@@ -20,6 +21,7 @@ const strategies = [
     { name: "SmartAccumulate", cls: SmartAccumulate },
     { name: "ZemaCrossOver", cls: ZemaCrossOver },
     { name: "ThorsHammer", cls: ThorsHammer },
+    { name: "DonchianTrend", cls: DonchianTrend },
 ];
 
 let symbol = process.argv[2] || "ADAUSDT";

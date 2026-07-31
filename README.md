@@ -158,10 +158,14 @@ docker compose logs -f bitfox-supertrend
 
 **Portainer:** Add Stack → paste `docker-compose.yml` contents → set the 4 required environment variables (`BYBIT_API_KEY`, `BYBIT_API_SECRET`, `SYMBOL`, `STRATEGY`).
 
-| Strategy | Best Timeframe | Best For |
-|----------|---------------|----------|
-| **Phoenix** | 1h+ | ADA, SOL, DOGE — multi-indicator, fewer bigger wins |
-| **SuperTrend** | 15m | Volatile alts — simple, fast, more trades |
-| **SuperTrendFull** | 15m-1h | Best risk-adjusted returns — trend-reversal exits |
+| Strategy | Timeframe | Honest status |
+|----------|-----------|---------------|
+| **DonchianTrend** | **1d** | **Recommended.** The only strategy with a positive walk-forward out-of-sample result (pooled PF 1.456 over 334 trades). Daily breakout trend following with risk-based sizing |
+| **Phoenix** | 1h+ | Reference implementation — no edge under realistic fills |
+| **SuperTrend** | 15m | Reference implementation — no edge under realistic fills |
+| **SuperTrendFull** | 15m-1h | Reference implementation — its old headline numbers were a backtest fill-model artifact |
 
-Swap `STRATEGY` in the compose env vars or `.env` to switch. See [BENCHMARKS.md](BENCHMARKS.md) for full results.
+Swap `STRATEGY` in the compose env vars or `.env` to switch. `DonchianTrend` requires `TIMEFRAME=1d`
+and trades roughly 8–12 times per symbol per year — long quiet periods are expected. It clears five of
+the six ship-bar criteria and fails one; read [BENCHMARKS.md](BENCHMARKS.md) for the numbers, the
+failure, and why position sizing matters more than the signal.
