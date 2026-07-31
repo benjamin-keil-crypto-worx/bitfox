@@ -64,10 +64,11 @@ class Bollinger extends Strategy{
         this.atr = null;
         this.candleConfirmationBuffer = [];
         this.confirmationCount =0;
-        this.lookBack = args.strategyExtras.lookBack || 20
-        this.probabiltyFactorLong = args.strategyExtras.probabilityFactorLong || 0.6;
-        this.probabiltyFactorShort = args.strategyExtras.probabilityFactorShort || 0.6;
-        this.squeezeFactor = args.strategyExtras.squeezeFactor || 1.9;
+        let extras = (args && args.strategyExtras) || {};
+        this.lookBack = extras.lookBack || 20
+        this.probabiltyFactorLong = extras.probabilityFactorLong || 0.6;
+        this.probabiltyFactorShort = extras.probabilityFactorShort || 0.6;
+        this.squeezeFactor = extras.squeezeFactor || 1.9;
     }
 
     /**
