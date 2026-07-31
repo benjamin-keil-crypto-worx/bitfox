@@ -103,9 +103,11 @@ class BackTest {
         this.maxDrawdownPct = 0;
         this.equityCurve = [];
 
-        this.makerFee = args.makerFee || 0.001;
-        this.takerFee = args.takerFee || 0.001;
-        this.slippage = args.slippage || 0.0005;
+        this.makerFee = args.makerFee ?? 0.001;
+        this.takerFee = args.takerFee ?? 0.001;
+        this.slippage = args.slippage ?? 0.0005;
+        this.sharpeRatio = 0;
+        this.metrics = null;
 
         this.initialFunds = this.args.amount || 0;
         this.adjustForBalance = false;
@@ -189,8 +191,12 @@ class BackTest {
                     if(trade.stopTriggered){
                         Log.short(`Stop Triggered`);
                         this.stopOrderCount++;
-                    } else {
+                    }
+                    // a win is net-positive PnL, independent of how the trade exited
+                    if (pnlAfterFees > 0) {
                         this.tradeSuccessCount++;
+                    } else {
+                        this.tradeLossCount++;
                     }
                     Log.log(`Bars: ${trade.totalBars} PnL: ${pnlAfterFees.toFixed(8)} (${(tradeReturn*100).toFixed(2)}%)`);
                     Log.log(`Max DD: ${trade.maxDrawDown}`);
@@ -226,22 +232,41 @@ class BackTest {
         let profitFactor = this.totalQuoteLoss > 0 ? this.totalQuoteProfit / this.totalQuoteLoss : (this.totalQuoteProfit > 0 ? Infinity : 0);
         let avgReturn = returns.length > 0 ? util.average(returns) : 0;
 
+        // Sharpe: per-trade ratio annualized by the actual trade frequency (sqrt of trades per year),
+        // derived from real trade timestamps — NOT sqrt(365), which assumes exactly one trade per day.
+        let sharpePerTrade = 0;
         let sharpeRatio = 0;
+        let tradesPerYear = 0;
+        let completed = trades.filter(t => t.exitTimeStamp != null);
         if(returns.length > 1){
             let mean = util.average(returns);
             let variance = returns.reduce((sum, r) => sum + (r - mean) ** 2, 0) / (returns.length - 1);
             let stdDev = Math.sqrt(variance);
-            sharpeRatio = stdDev > 0 ? (mean / stdDev) * Math.sqrt(365) : 0;
+            sharpePerTrade = stdDev > 0 ? mean / stdDev : 0;
+            let firstEntry = new Date(completed[0].entryTimestamp).getTime();
+            let lastExit = new Date(completed[completed.length - 1].exitTimeStamp).getTime();
+            let spanDays = (lastExit - firstEntry) / 86400000;
+            tradesPerYear = spanDays > 0 ? completed.length / (spanDays / 365) : 0;
+            sharpeRatio = tradesPerYear > 0 ? sharpePerTrade * Math.sqrt(tradesPerYear) : sharpePerTrade;
         }
+        this.sharpeRatio = sharpeRatio;
 
         let startingFunds = this.initialFunds;
         let endingFunds = trades.length > 0 ? trades[trades.length - 1].funds : 0;
         let totalReturnPct = startingFunds > 0 ? ((endingFunds - startingFunds) / startingFunds) * 100 : 0;
+        let openTrades = totalTrades - completedTrades;
 
-        Log.yellow(`========== PHOENIX BACKTEST RESULTS ==========`);
+        this.metrics = {
+            totalTrades, completedTrades, openTrades, wins, losses, winRate, profitFactor,
+            avgReturn, sharpePerTrade, sharpeRatio, tradesPerYear,
+            totalReturnPct, maxDrawdownPct: this.maxDrawdownPct, stopLossCount: this.stopOrderCount
+        };
+
+        let contextName = (this.strategy.getContext() && this.strategy.getContext().context) || 'STRATEGY';
+        Log.yellow(`========== ${contextName.toUpperCase()} BACKTEST RESULTS ==========`);
         console.log();
         Log.yellow(`Total Trades: ${totalTrades}`);
-        Log.yellow(`Completed Trades: ${completedTrades}`);
+        Log.yellow(`Completed Trades: ${completedTrades}${openTrades > 0 ? `  (Open/never exited: ${openTrades})` : ''}`);
         Log.yellow(`Wins: ${wins}  Losses: ${losses}`);
         Log.yellow(`Win Rate: ${winRate.toFixed(2)}%`);
         console.log();
@@ -251,7 +276,7 @@ class BackTest {
         console.log();
         Log.yellow(`Avg Return Per Trade: ${(avgReturn * 100).toFixed(2)}%`);
         Log.yellow(`Profit Factor: ${profitFactor === Infinity ? '∞' : profitFactor.toFixed(2)}`);
-        Log.yellow(`Sharpe Ratio (annualized): ${sharpeRatio.toFixed(2)}`);
+        Log.yellow(`Sharpe Ratio (annualized, √trades/yr): ${sharpeRatio.toFixed(2)}  (per-trade: ${sharpePerTrade.toFixed(3)}, ~${tradesPerYear.toFixed(0)} trades/yr)`);
         Log.yellow(`Max Drawdown: ${(this.maxDrawdownPct * 100).toFixed(2)}%`);
         console.log();
         Log.yellow(`Stop Losses Triggered: ${this.stopOrderCount}`);
@@ -260,7 +285,8 @@ class BackTest {
         Log.yellow(`Max Bars: ${this.maxBarCount}  Min Bars: ${this.minBarCount}`);
         console.log();
         Log.yellow(`Fee Model: Maker ${(this.makerFee*100).toFixed(3)}% / Taker ${(this.takerFee*100).toFixed(3)}%`);
-        Log.yellow(`Slippage: ${(this.slippage*100).toFixed(3)}%`);
+        Log.yellow(`Slippage (applied to entry and exit fills): ${(this.slippage*100).toFixed(3)}%`);
+        Log.yellow(`Fill Model: TP at target, SL at stop (gaps fill at open), signal exits at close; same-bar TP+SL resolves as stop-loss`);
         console.log();
         Log.yellow(`================================================`);
     }
@@ -303,10 +329,12 @@ class BackTest {
             }
                 break;
             case State.STATE_TAKE_PROFIT: {
+                this.completeOpenTrade(currentCandles, false);
                 this.strategy.setState(State.STATE_PENDING);
             }
                 break;
             case State.STATE_STOP_LOSS_TRIGGERED: {
+                this.completeOpenTrade(currentCandles, true);
                 this.strategy.setState(State.STATE_PENDING);
             }
                 break;
@@ -338,12 +366,13 @@ class BackTest {
         let sT = (this.stopLossTarget>0) ? this.strategy.calculateShortStopTarget(currentOrder.price,this.stopLossTarget) : 0;
         let isinProfitRange = util.priceInShortProfitRange(currentCandles[3], pT)
         let isInStopLossRange = (sT > 0) ? util.priceInShortStopRange(currentCandles[2], sT) : false;
-        if (isinProfitRange) {
-            this.completeTrade(currentCandles);
-        }if(isInStopLossRange){
-            this.applyStopLoss(currentCandles)
+        // stop-loss first: a bar that touches both target and stop resolves as a loss
+        if (isInStopLossRange) {
+            this.applyStopLoss(currentCandles, Math.max(currentCandles[1], sT));
+        } else if (isinProfitRange) {
+            this.completeTrade(currentCandles, Math.min(currentCandles[1], pT));
         }
-        this.strategy.setState((isinProfitRange) ? State.STATE_TAKE_PROFIT : (isInStopLossRange) ? State.STATE_STOP_LOSS_TRIGGERED : State.STATE_AWAIT_TAKE_PROFIT)
+        this.strategy.setState((isInStopLossRange) ? State.STATE_STOP_LOSS_TRIGGERED : (isinProfitRange) ? State.STATE_TAKE_PROFIT : State.STATE_AWAIT_TAKE_PROFIT)
     }
 
     /**
@@ -381,13 +410,14 @@ class BackTest {
         let pT = this.strategy.calculateLongProfitTarget(currentOrder.price, this.profitTarget)
         let sT = (this.stopLossTarget>0) ? this.strategy.calculateLongStopTarget(currentOrder.price,this.stopLossTarget) : 0;
         let isinProfitRange = util.priceInLongProfitRange(currentCandles[2], pT);
-        let isInStopLossRange = (sT > 0) ? util.priceInLongStopRange(currentCandles[3], sT) : null;
-        if (isinProfitRange) {
-            this.completeTrade(currentCandles);
-        }if(isInStopLossRange){
-            this.applyStopLoss(currentCandles)
+        let isInStopLossRange = (sT > 0) ? util.priceInLongStopRange(currentCandles[3], sT) : false;
+        // stop-loss first: a bar that touches both target and stop resolves as a loss
+        if (isInStopLossRange) {
+            this.applyStopLoss(currentCandles, Math.min(currentCandles[1], sT));
+        } else if (isinProfitRange) {
+            this.completeTrade(currentCandles, Math.max(currentCandles[1], pT));
         }
-        this.strategy.setState((isinProfitRange) ? State.STATE_TAKE_PROFIT : (isInStopLossRange) ? State.STATE_STOP_LOSS_TRIGGERED : State.STATE_AWAIT_TAKE_PROFIT)
+        this.strategy.setState((isInStopLossRange) ? State.STATE_STOP_LOSS_TRIGGERED : (isinProfitRange) ? State.STATE_TAKE_PROFIT : State.STATE_AWAIT_TAKE_PROFIT)
     }
 
     /**
@@ -399,7 +429,7 @@ class BackTest {
     handleStateShort(currentCandles) {
         this.adjustEntryBalance(currentCandles);
         this.strategy.setState(State.STATE_AWAIT_TAKE_PROFIT);
-        let sO = this.mockService.limitSellOrder(this.args.symbol, this.args.amount,  currentCandles[4],);
+        let sO = this.mockService.limitSellOrder(this.args.symbol, this.args.amount,  currentCandles[4] * (1 - this.slippage),);
         this.tradeHistory.push(
             this.mockService.getTradeTemplate(currentCandles, sO, this.profitTarget, this.funds, this.args.amount, 'short')
         )
@@ -415,7 +445,7 @@ class BackTest {
     handleStateLong(currentCandles) {
         this.adjustEntryBalance(currentCandles);
         this.strategy.setState(State.STATE_AWAIT_TAKE_PROFIT);
-        let bO = this.mockService.limitBuyOrder(this.args.symbol, this.args.amount, currentCandles[4])
+        let bO = this.mockService.limitBuyOrder(this.args.symbol, this.args.amount, currentCandles[4] * (1 + this.slippage))
         this.tradeHistory.push(
             this.mockService.getTradeTemplate(currentCandles, bO, this.profitTarget, this.funds, this.args.amount, 'long')
         )
@@ -457,10 +487,24 @@ class BackTest {
      * @param currentCandles {Array}  open, high, low, close and volume values
      * @returns {void}  this method is to apply a fictional stop loss order for backtesting statistics
      */
-    applyStopLoss(currentCandles) {
+    applyStopLoss(currentCandles, fillPrice) {
         let currentTrade = this.tradeHistory[this.tradeHistory.length - 1];
         currentTrade.stopTriggered = true;
-        this.completeTrade(currentCandles)
+        this.completeTrade(currentCandles, fillPrice)
+    }
+
+    /**
+     *
+     * @param currentCandles {Array}  open, high, low, close and volume values
+     * @param isStop {Boolean} whether the strategy signalled a stop-loss exit
+     * @returns {void} Completes a strategy-managed exit (STATE_TAKE_PROFIT / STATE_STOP_LOSS_TRIGGERED emitted
+     *                 directly by a strategy) at the bar close, so the trade is not left open and dropped from metrics.
+     */
+    completeOpenTrade(currentCandles, isStop) {
+        let currentTrade = this.tradeHistory[this.tradeHistory.length - 1];
+        if (!currentTrade || currentTrade.exitOrder != null) return;
+        if (isStop) { currentTrade.stopTriggered = true; }
+        this.completeTrade(currentCandles, currentCandles[4]);
     }
 
     /**
@@ -469,18 +513,18 @@ class BackTest {
      * @returns {void}  this method completes ongoing trades i.e. it creates a exit order. It places a sell order when the entry was a long trade
      *                  and buy order when the entry was a sell order
      */
-    completeTrade(currentCandles) {
+    completeTrade(currentCandles, fillPrice) {
         let currentTrade = this.tradeHistory[this.tradeHistory.length - 1];
         currentTrade.totalBars = this.barCount;
         this.barAvgCount.push(this.barCount)
         if (this.tradeDirection === 'long') {
             currentTrade.maxDrawDown = this.maxLongDrawDown;
             this.maxLongDrawDown = 0;
-            this.executeSellOrder(currentTrade, currentCandles);
+            this.executeSellOrder(currentTrade, currentCandles, fillPrice);
         } else {
             currentTrade.maxDrawDown = this.maxShortDrawDown;
             this.maxShortDrawDown = 0;
-            this.executeBuyOrder(currentCandles, currentTrade);
+            this.executeBuyOrder(currentCandles, currentTrade, fillPrice);
         }
         if(this.maxBarCount < this.barCount){ this.maxBarCount = this.barCount}
         if(this.minBarCount > this.barCount){ this.minBarCount = this.barCount}
@@ -493,8 +537,9 @@ class BackTest {
      * @param currentTrade {any} A internal representation of an ongoing trade
      * @returns {void}  this method executes a fictional buy order
      */
-    executeBuyOrder(currentCandles, currentTrade) {
-        let exitPrice = currentCandles[3];
+    executeBuyOrder(currentCandles, currentTrade, fillPrice) {
+        // buy-to-cover pays slippage on top of the fill; default fill is the bar close (signal exits)
+        let exitPrice = (fillPrice ?? currentCandles[4]) * (1 + this.slippage);
         let exitAmount = this.args.amount;
         currentTrade.exitOrder = this.mockService.marketBuyOrder(this.args.symbol, exitAmount, exitPrice);
         this.adjustUnrealizedBalance(currentCandles);
@@ -503,8 +548,9 @@ class BackTest {
         currentTrade.exitTimeStamp = new Date(currentCandles[0]);
     }
 
-    executeSellOrder(currentTrade, currentCandles) {
-        let exitPrice = currentCandles[2];
+    executeSellOrder(currentTrade, currentCandles, fillPrice) {
+        // sell fills lose slippage; default fill is the bar close (signal exits)
+        let exitPrice = (fillPrice ?? currentCandles[4]) * (1 - this.slippage);
         let exitAmount = this.args.amount;
         currentTrade.exitOrder = this.mockService.marketSellOrder(this.args.symbol, exitAmount, exitPrice);
         this.adjustUnrealizedBalance(currentCandles);

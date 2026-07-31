@@ -2,64 +2,69 @@
 
 > **🐳 Docker quick-start:** `docker compose up -d` deploys Phoenix (1h) + SuperTrend (15m) side by side. See [README.md](README.md) for details.
 
-All benchmarks run against **real Bybit historical data** via CCXT. Results include 0.1% taker fees and realistic slippage. Backtest period: ~12-18 months of 1h candles.
+All benchmarks run against **real Bybit historical data** via CCXT (~2.3 years of 1h candles, ~200 days of 15m candles). Results include 0.1% taker fees on both legs and 0.05% slippage applied to every fill.
+
+## ⚠️ Methodology (updated 2026-07-31)
+
+Earlier versions of this file reported spectacular results (Phoenix +455%, SuperTrendFull PF 6.59, Sharpe 8+). Those numbers were artifacts of an unrealistic fill model: the old backtest engine filled **every** exit — take-profit *and* stop-loss — at the best price of the exit bar, never applied slippage, dropped strategy-managed exits from the accounting, and annualized Sharpe incorrectly. The engine has been fixed (GHBF-26):
+
+- Take-profits fill at the target price, stop-losses at the stop price, gaps at the bar open, signal exits at the bar close
+- Stop-loss is evaluated before take-profit; a bar touching both resolves as a loss
+- Slippage is applied against the trader on entry and exit
+- Strategy-managed exits complete their trades (nothing dropped from metrics)
+- Sharpe is annualized by actual trade frequency (√ trades/year); win rate = net PnL > 0
+
+The honest numbers below are the real baseline. They are bad — and that is far more useful than flattering fiction.
+
+Note on Return%: the engine trades a fixed position size (no compounding, no bankruptcy stop), so losses can exceed −100% of starting capital.
 
 ---
 
-## Phoenix — Multi-Timeframe Trend + Momentum + ATR Adaptive
+## Honest results — engine-managed exits (3% TP / 2% SL, biDirectional)
 
-The flagship strategy. Combines EMA trend scoring (20/50/100/200), RSI momentum, MACD confirmation, and ATR-based dynamic take-profit/stop-loss with trailing stops.
+`node examples/StrategyBenchmark.js <SYMbol> 1h 1000` — 2026-07-31, ~20,000 1h candles (≈ 2.3 years).
 
-| Symbol | Return | PF | Sharpe | MaxDD | Trades | Win Rate |
-|--------|--------|----|--------|-------|--------|----------|
-| ADA/USDT 1h | **+455%** | **3.53** | **8.01** | 3.8% | 669 | 36.9% |
-| BTC/USDT 1h | **+72%** | **1.46** | **2.74** | 11.8% | 595 | 30.1% |
+**ADA/USDT 1h:**
 
-Best on mid-to-high volatility assets (ADA, SOL, DOGE). 1h+ timeframes recommended.
+| Strategy | Trades | Return% | WinRate% | PF | Sharpe | 
+|----------|--------|---------|----------|-----|--------|
+| ThorsHammer | 223 | −57.5% | 43.9% | 0.82 | −0.36 |
+| MfiMacd | 493 | −133.7% | 41.6% | 0.84 | −1.20 |
+| SuperTrend | 446 | −172.1% | 39.0% | 0.75 | −1.89 |
+| Phoenix | 654 | −181.5% | 41.9% | 0.75 | −2.77 |
+| RSITrend | 476 | −214.4% | 37.2% | 0.74 | −2.51 |
+| EmaTrend | 1000 | −280.1% | 41.8% | 0.83 | −1.68 |
+| SmartAccumulate | 1639 | −413.7% | 40.7% | 0.85 | −2.72 |
+| ZemaCrossOver | 1665 | −582.6% | 40.1% | 0.80 | −3.01 |
 
----
+**BTC/USDT 1h:** same picture — every strategy PF 0.58–0.86, negative Sharpe (best: MfiMacd −64.8%, PF 0.86).
 
-## SuperTrend — Trend-Following with Fixed TP/SL
+**ADA/USDT 15m:** SuperTrend −13.4% (PF 0.93); SuperTrendFull (trend-reversal exits, all trades accounted) −62.8% (PF 0.64, 29.5% win rate).
 
-Entry timing via SuperTrend indicator, exits managed by fixed 3% TP / 2% SL.
+## What this means
 
-| Symbol | Return | PF | Sharpe | MaxDD | Trades | 
-|--------|--------|----|--------|-------|--------|
-| ADA/USDT 15m | **+124%** | **1.91** | **6.20** | 11.4% | 248 |
-| BTC/USDT 15m | **+33%** | **1.31** | **2.12** | 9.7% | 147 |
+With a ~40% win rate and a fixed +3%/−2% TP/SL, expectancy is ~zero *before* costs — fees and slippage then make every strategy a net loser. **No current BitFox strategy has a demonstrated edge under realistic fills.** The prior "results" came from the simulator, not the signals.
 
-Works well on short timeframes (15m). Simpler, more trades.
+This is the honest starting line. The path forward (see `.claude/context/STRATEGY-RESEARCH.md`):
 
----
-
-## SuperTrendFull — Trend-Following with Trend-Reversal Exits
-
-Same entry as SuperTrend, but exits when the SuperTrend indicator reverses direction. This gives the trend room to run and dramatically improves risk-adjusted returns.
-
-| Symbol | Side | Return | PF | MaxDD |
-|--------|------|--------|----|-------|
-| ADA/USDT 15m | **Both** | **+115%** | **6.59** | **3.0%** |
-| | Long | +167% | 5.40 | 2.2% |
-| | Short | +221% | 9.95 | 1.5% |
-
-**Best risk-adjusted returns in the library.** Profit factor of 6.59 means winners are 6.5x larger than losers. Both long and short sides are independently profitable.
-
----
+1. Strategies need real exit logic (ATR-scaled, regime-aware) instead of fixed 3%/2% targets — the engine now rewards it honestly.
+2. New strategies should beat this baseline and buy-and-hold, not the old fictional numbers.
+3. Treat any strategy result without a stated fill model with suspicion — here and everywhere else.
 
 ## Strategy Guide
 
-| Strategy | Best Timeframe | Best Assets | Style |
-|----------|---------------|-------------|-------|
-| **Phoenix** | 1h+ | ADA, SOL, DOGE | Multi-indicator, fewer but bigger wins |
-| **SuperTrendFull** | 15m-1h | ADA, BTC, ETH | Trend following, excellent risk metrics |
-| **SuperTrend** | 15m | Volatile alts | Simple, fast, more trades |
-| **RSITrend** | 1h | BTC, ETH | RSI mean reversion |
-| **EmaTrend** | 1h-4h | BTC | EMA crossover, slow |
-| **MfiMacd** | 1h | ADA, MATIC | MFI + MACD combo |
-| **Bollinger** | 15m-1h | Any | Mean reversion, volatile markets |
-| **ThorsHammer** | 1h-4h | Any | Candlestick pattern reversal |
-| **ZemaCrossOver** | 1h | BTC, ETH | Zero-lag EMA crossover |
-| **SmartAccumulate** | 1h | Any | DCA-style accumulation |
+| Strategy | Style | Honest status (2026-07-31) |
+|----------|-------|----------------------------|
+| **Phoenix** | Multi-indicator trend scoring, ATR exits | No edge under realistic fills (PF 0.58–0.75) |
+| **SuperTrendFull** | Trend following, reversal exits | No edge; previous headline numbers were fill-model artifacts |
+| **SuperTrend** | Trend following, fixed TP/SL | Closest to breakeven on 15m (PF 0.93) |
+| **RSITrend** | RSI mean reversion | No edge |
+| **EmaTrend** | EMA crossover | No edge |
+| **MfiMacd** | MFI + MACD combo | Least bad on 1h (PF 0.84–0.86) |
+| **Bollinger** | Squeeze mean reversion | Crashes without strategyExtras (fix tracked in GHBF-27) |
+| **ThorsHammer** | Candlestick pattern reversal | No edge |
+| **ZemaCrossOver** | Zero-lag EMA crossover | No edge |
+| **SmartAccumulate** | Pivot-based accumulation | No edge |
 
 ---
 
