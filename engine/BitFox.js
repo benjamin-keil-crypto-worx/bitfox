@@ -29,6 +29,7 @@ const {Client} = require("../server/client");
 
 const {MfiMacd} = require("../strategies/MfiMacd");
 const {Phoenix} = require("../strategies/Phoenix");
+const {Regime} = require("../strategies/Regime");
 const utils = require("../lib/utility/util");
 const {Errors} = require("../errors/Errors");
 
@@ -1320,6 +1321,7 @@ module.exports = {
     MultiDivergence:MultiDivergence,
     DynamicGrid:DynamicGrid,
     Phoenix:Phoenix,
+    Regime:Regime,
     utils:utils,
     getModels:getModels,
     DataLoaderBuilder:DataLoaderBuilder,

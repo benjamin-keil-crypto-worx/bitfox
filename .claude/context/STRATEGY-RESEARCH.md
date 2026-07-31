@@ -11,6 +11,8 @@ GHBF-26 (branch `feature/GHBF-26-BacktestRealism`, issue #26) fixed findings (a)
 
 **Under realistic fills, every current strategy loses money.** ADAUSDT 1h: PF 0.74–0.85, Sharpe −0.4 to −3.0, all negative returns. BTCUSDT 1h: PF 0.58–0.86, all negative. ADAUSDT 15m: SuperTrend PF 0.93 (−13%), SuperTrendFull PF 0.64 (−63%, 29.5% WR once its dropped trades are counted). The old headline numbers were 100% fill-model artifact. Full tables in `BENCHMARKS.md` (rewritten with methodology note).
 
+**Regime v1 outcome (built later the same day, GHBF-32, `strategies/Regime.js`):** no edge at 1h with defaults — ADA PF 0.74 (trend sleeve 0.64, range sleeve 0.88), BTC PF 0.57. Edge-triggered SuperTrend entries (fresh flip only) already applied; continuous entries were worse (PF 0.82→0.74 improvement but still negative). Lessons for the next iteration: (a) 1h signals on majors don't clear ~0.2% round-trip costs — test 4h/1d first; (b) the range sleeve on ADA was closest to breakeven (−13.5%) — mean reversion on high-vol alts is the most promising sleeve; (c) any parameter work must be walk-forward (train/test split) or it's curve fitting; (d) Phoenix-style indicator indexing without warm-up offsets is WRONG — use Regime's offset-alignment pattern (`this.offsets`, `valueAt()`).
+
 Consequences for the build session:
 - §5 steps 1–3 are DONE. Go straight to building the §6 "Regime" strategy against the fixed engine.
 - The honest baseline to beat is now **PF ≈ 0.85 and buy-and-hold**, not the old fictional PF 3+.
