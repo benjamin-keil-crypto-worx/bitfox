@@ -218,13 +218,16 @@ Detailed agent skill files are in `.agents/skills/` (cross-platform, works with 
 For opencode users, equivalent files are also in `.opencode/skills/`.
 
 Claude Code workflow skills are in `.claude/skills/` (GHBF workflow: spec → build → review → merge, all via `gh` CLI):
+- `strategy/SKILL.md` — strategy ideation (step 0 for strategy work): reads the ledger, develops ONE candidate with pros/cons, enforces hard targets/stops, hands off to spec
 - `spec/SKILL.md` — product-manager collaborator; creates/refines GitHub issues with acceptance criteria
 - `build/SKILL.md` — implements a GHBF issue on its `feature/GHBF-<n>-<Name>` branch, tests, opens PR to develop
 - `review/SKILL.md` — reviews the PR against the issue's acceptance criteria, posts a verdict comment
 - `merge/SKILL.md` — gates on verdict + CI, merges with a merge commit, closes the issue
 - `shared/conventions.md` — branch naming, gh account, verdict protocol (read by all four)
 
-Strategy research context (verified backtest numbers, engine credibility findings, new-strategy spec) is in `.claude/context/STRATEGY-RESEARCH.md`.
+Strategy knowledge lives in `.claude/context/`:
+- `STRATEGY-LEDGER.md` — **canonical strategy inventory**: honest verdicts, open leads, rejected approaches, ship bar, hard stops. Read this instead of re-benchmarking; update it after every research outcome.
+- `STRATEGY-RESEARCH.md` — long-form research history (engine credibility findings, methodology).
 
 ## Known Bugs / Gotchas
 

@@ -35,6 +35,8 @@ Ask clarifying questions **before** drafting — one focused round, grouped, not
 - **Test expectations** — what should `npm test` cover afterward?
 - **Affected subsystems** — strategies/, engine/, lib/indicators/, trade-live.js, docker? Check `AGENTS.md` and `.claude/context/` for constraints, and challenge assumptions that conflict with known repo gotchas.
 
+**Strategy-related requests**: if the feature is a new or improved trading strategy and no candidate has been developed yet, route through the `strategy` skill FIRST (it reads `.claude/context/STRATEGY-LEDGER.md` and enforces the ship bar / hard stops). When writing a strategy issue, embed the ledger's Ship bar in the Acceptance Criteria — a strategy issue without walk-forward OOS criteria is incomplete.
+
 If the user's idea is vague, propose 2–3 concrete alternatives with trade-offs rather than asking open-ended questions.
 
 ### 2. Draft the issue body
