@@ -41,6 +41,17 @@ Note on Return%: the engine trades a fixed position size (no compounding, no ban
 
 **ADA/USDT 15m:** SuperTrend −13.4% (PF 0.93); SuperTrendFull (trend-reversal exits, all trades accounted) −62.8% (PF 0.64, 29.5% win rate).
 
+## Regime (GHBF-32) — regime-adaptive dual-mode, self-managed ATR exits
+
+`node examples/RegimeBacktestExample.js <SYMBOL> 1h 1000` — ADX regime filter switching between edge-triggered SuperTrend trend-following (ATR trailing stops) and Bollinger/RSI mean reversion. All exits strategy-managed; engine TP/SL as wide disaster backstops.
+
+| Symbol (1h) | Trades | Return% | WR% | PF | Sleeve breakdown |
+|---|---|---|---|---|---|
+| ADA/USDT | 231 | −100.7% | 33.8% | 0.74 | trend-only PF 0.64 · range-only PF 0.88 (−13.5%) |
+| BTC/USDT | 257 | −134.4% | 27.2% | 0.57 | trend-only PF 0.68 · range-only PF 0.36 |
+
+Buy-and-hold over the same window: ADA +63%. **Honest verdict: Regime v1 has no edge with default parameters at 1h.** The regime architecture and exit discipline are sound engineering, but the underlying signals (SuperTrend flips, band fades) don't clear ~0.2% round-trip costs on these pairs at this timeframe — consistent with the baseline table above. Follow-up direction: higher timeframes (4h/1d, where average moves dwarf costs) and a disciplined walk-forward parameter study, tracked as a separate issue.
+
 ## What this means
 
 With a ~40% win rate and a fixed +3%/−2% TP/SL, expectancy is ~zero *before* costs — fees and slippage then make every strategy a net loser. **No current BitFox strategy has a demonstrated edge under realistic fills.** The prior "results" came from the simulator, not the signals.

@@ -41,7 +41,8 @@ let strategyMap = {
     'SuperTrend': require("./strategies/SuperTrend").SuperTrend,
     'SuperTrendFull': SuperTrendFull,
     'RSITrend': require("./strategies/RSITrend").RSITrend,
-    'EmaTrend': require("./strategies/EmaTrend").EmaTrend
+    'EmaTrend': require("./strategies/EmaTrend").EmaTrend,
+    'Regime': require("./strategies/Regime").Regime
 };
 
 let StrategyClass = strategyMap[strategyName];
