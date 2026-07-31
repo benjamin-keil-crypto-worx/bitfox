@@ -217,10 +217,19 @@ Detailed agent skill files are in `.agents/skills/` (cross-platform, works with 
 
 For opencode users, equivalent files are also in `.opencode/skills/`.
 
+Claude Code workflow skills are in `.claude/skills/` (GHBF workflow: spec → build → review → merge, all via `gh` CLI):
+- `spec/SKILL.md` — product-manager collaborator; creates/refines GitHub issues with acceptance criteria
+- `build/SKILL.md` — implements a GHBF issue on its `feature/GHBF-<n>-<Name>` branch, tests, opens PR to develop
+- `review/SKILL.md` — reviews the PR against the issue's acceptance criteria, posts a verdict comment
+- `merge/SKILL.md` — gates on verdict + CI, merges with a merge commit, closes the issue
+- `shared/conventions.md` — branch naming, gh account, verdict protocol (read by all four)
+
+Strategy research context (verified backtest numbers, engine credibility findings, new-strategy spec) is in `.claude/context/STRATEGY-RESEARCH.md`.
+
 ## Known Bugs / Gotchas
 
 - `DynamicGrid.js` has a crash bug (references undefined `data` variable)
 - `MarketMaker.js` uses `STATE_CONTEXT_INDEPENDENT` — won't work with standard backtest
 - `strategyExtras()` passes values to `args.strategyExtras`, but some older strategies read from `args` directly (e.g., `args.period` instead of `args.strategyExtras.period`)
 - Examples used `require("bifox")` (typo) — now fixed to `require("../index")`
-- Backtest engine uses candle close for entry, low/high for exit — slightly optimistic for entries
+- Backtest engine uses candle close for entry, but fills EVERY exit (take-profit AND stop-loss) at the best price of the exit bar (long exits at the candle high, short exits at the low) — results are systematically inflated; see `.claude/context/STRATEGY-RESEARCH.md` §4 for the full credibility findings before trusting any backtest number
