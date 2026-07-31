@@ -12,15 +12,11 @@
   },
   "readme": "README.md",
   "scripts": {
+    "start": "node trade-live.js",
     "test": "mocha --timeout 5000 --recursive",
+    "test:ci": "mocha --timeout 5000 --recursive --ignore test/engine/bitfox-test.js --ignore test/service/mock-service-test.js",
     "test-verbose": "mocha --timeout 5000 --recursive  --reporter doc > test-results/report.html",
-    "sandbox-dataLoader": "node sandbox/dataLoaderSandbox.js",
-    "sandbox-indicatorTest": "node sandbox/indicatorTestLoader.js",
-    "sandbox-dataLoaderExport": "node sandbox/dataLoaderDataExport.js",
-
-    "sandbox-backTesting": "node sandbox/simpleBot.js",
-    "sandbox-server":"node sandbox/serverSandbox",
-    "sandbox-client":"node sandbox/clientSandbox",
+    "benchmark": "node examples/StrategyBenchmark.js",
     "postinstall": "node postinstall.js",
     "generateDocsScript": "node docdash-script-generator.js > generateDocs.ps1"
   },
@@ -117,7 +113,6 @@
     "body-parser": "^1.20.2",
     "boilerplate-readme-template": "^1.0.1",
     "ccxt": "^3.0.40",
-    "chai": "^4.3.7",
     "clean-jsdoc-theme": "^4.2.7",
     "colors": "^1.4.0",
     "docdash": "^2.0.1",
@@ -127,20 +122,21 @@
     "install": "^0.13.0",
     "json-rpc-2.0": "^1.6.0",
     "minimist": "^1.2.8",
-    "mocha": "^10.2.0",
     "node-fetch": "^3.3.1",
     "node-schedule": "^2.1.1",
     "node-super-trend": "^1.5.0",
     "node-telegram-bot-api": "^0.61.0",
     "npm": "^9.6.4",
     "save": "^2.9.0",
-    "sinon": "^15.0.4",
     "technicalindicators": "^3.1.0",
     "trendyways": "^0.8.0",
     "uuid": "^9.0.0",
     "uuid4": "^2.0.2"
   },
   "devDependencies": {
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0",
+    "sinon": "^15.0.4",
     "jsdoc": "^4.0.2",
     "jsdoc-to-markdown": "^8.0.0"
   }

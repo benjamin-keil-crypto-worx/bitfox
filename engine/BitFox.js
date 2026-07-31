@@ -1118,6 +1118,12 @@ class BitFox extends Service {
         if (ticker.last <= me.foxStrategy.calculateShortProfitTarget(me.lastShortEntry, me.takeProfitPct)) {
             await this.takeProfit(me);
             me.foxStrategy.setState(State.STATE_TAKE_PROFIT);
+            return;
+        }
+        // engine-side stop-loss: without this, a short only had a stop if the strategy emitted one itself
+        if (me.stopLossTarget > 0 && ticker.last >= me.foxStrategy.calculateShortStopTarget(me.lastShortEntry, me.stopLossTarget)) {
+            await this.stopLossShort(ticker, me, null);
+            me.foxStrategy.setState(State.STATE_PENDING);
         }
     }
 
@@ -1131,6 +1137,12 @@ class BitFox extends Service {
         if (ticker.last >= me.foxStrategy.calculateLongProfitTarget(me.lastLongEntry, me.takeProfitPct)) {
             await this.takeProfit(me);
             me.foxStrategy.setState(State.STATE_TAKE_PROFIT);
+            return;
+        }
+        // engine-side stop-loss: without this, a long only had a stop if the strategy emitted one itself
+        if (me.stopLossTarget > 0 && ticker.last <= me.foxStrategy.calculateLongStopTarget(me.lastLongEntry, me.stopLossTarget)) {
+            await this.stopLossLong(ticker, me, null);
+            me.foxStrategy.setState(State.STATE_PENDING);
         }
     }
 

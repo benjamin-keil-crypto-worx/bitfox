@@ -38,7 +38,7 @@ class Strategy {
         this.kline =null;
         this.currentPrice =0;
         this.args = args;
-        this.custom = args.RSITrend || {};
+        this.custom = (args && args.strategyExtras) || {};
         this.sidePreference = args.sidePreference || 'biDirectional';
         this.allowLong = true;
         this.allowShort = true;

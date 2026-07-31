@@ -24,7 +24,9 @@ class SuperTrendFull extends Strategy{
     getState(){ return this.state}
 
     async setup(klineCandles){
-        this.setIndicator(klineCandles,{multiplier:this.args.multiplier || 3,period:this.args.period || 7},this.indicators.SuperTrendIndicator.className);
+        // params come from strategyExtras (builder convention); top-level args kept for backward compatibility
+        let extras = (this.args && this.args.strategyExtras) || {};
+        this.setIndicator(klineCandles,{multiplier: extras.multiplier || this.args.multiplier || 3, period: extras.period || this.args.period || 7},this.indicators.SuperTrendIndicator.className);
         return this;
     }
 

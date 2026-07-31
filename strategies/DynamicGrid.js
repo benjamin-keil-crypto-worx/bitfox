@@ -82,7 +82,7 @@ class DynamicGrid extends Strategy {
             return this.getStrategyResult(this.state, {});
         } if(this.state === this.states.STATE_PENDING) {
 
-            let currentGrids = this.gridDistro[isBackTest ? _index : data.length - 1]
+            let currentGrids = this.gridDistro[isBackTest ? _index : this.gridDistro.length - 1]
 
             // This is same as above but this time we calling a method in the super class to provide the current approximate price
             let currentPrice = this.getApproximateCurrentPrice(isBackTest, _index);
