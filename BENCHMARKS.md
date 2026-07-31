@@ -52,6 +52,40 @@ Note on Return%: the engine trades a fixed position size (no compounding, no ban
 
 Buy-and-hold over the same window: ADA +63%. **Honest verdict: Regime v1 has no edge with default parameters at 1h.** The regime architecture and exit discipline are sound engineering, but the underlying signals (SuperTrend flips, band fades) don't clear ~0.2% round-trip costs on these pairs at this timeframe — consistent with the baseline table above. Follow-up direction: higher timeframes (4h/1d, where average moves dwarf costs) and a disciplined walk-forward parameter study, tracked as a separate issue.
 
+## Higher timeframes & walk-forward study (GHBF-35)
+
+With aligned indicators (GHBF-34), the full sweep across 1h/4h/1d on ADA and BTC:
+
+**4h** (`node examples/StrategyBenchmark.js <SYM> 4h 1000 40`, ~7,960 candles ≈ 3.6 years):
+
+| Strategy | ADA 4h | BTC 4h |
+|---|---|---|
+| Phoenix | **+39.7% · PF 1.05** | −383.7% · PF 0.78 |
+| Bollinger | −2.0% · PF 0.98 | −107.6% · PF 0.66 |
+| SuperTrend | −71.2% · PF 0.82 | −22.8% · PF 0.97 |
+| everything else | PF 0.45–0.85 | PF 0.70–0.81 |
+
+**1d** (`... 1d 1000 15`, ~1,795 candles ≈ 4.9 years): ADA — everything negative (best Bollinger −4.9% · PF 0.71; ThorsHammer's "+2.7%" is a single trade). BTC — Bollinger +7.1% · PF 1.20 on only **14 trades**; Phoenix −2.2% · PF 0.99; rest negative.
+
+**Regime at 4h/1d**: ADA 4h PF 0.76, BTC 4h **PF 1.07 (+40%)** but vs +272% buy-and-hold; ADA 1d PF 0.29.
+
+**Walk-forward (Regime, `node examples/RegimeWalkForward.js`)** — the decisive test. 4 folds, train-select by PF, evaluate once out-of-sample:
+
+- ADA 1h: OOS aggregate **−69.9%** (all 4 folds negative); a fold with train PF 2.27 delivered OOS PF 0.95
+- ADA 4h: OOS aggregate **−201.4%** (3 of 4 folds negative); train-best params flip fold to fold
+
+### Go / no-go verdicts
+
+| Candidate | Verdict | Why |
+|---|---|---|
+| Any strategy @ 1h | **No-go** | All PF < 1 on both symbols, aligned data |
+| Phoenix @ ADA 4h | **No-go (watch)** | PF 1.05 is within noise; PF 0.78 on BTC 4h shows it doesn't generalize |
+| Bollinger @ BTC 1d | **No-go (watch)** | PF 1.20 but n=14 trades — no statistical power |
+| Regime (any TF) | **No-go** | Walk-forward OOS decisively negative; train winners don't persist |
+| Buy-and-hold | Benchmark | Beat every strategy in every tested window |
+
+**Bottom line:** under honest fills, none of the classic indicator signals in this library — at any tested timeframe, with or without regime filtering, with or without walk-forward parameter selection — shows a real edge over costs, and none beats buy-and-hold. BitFox's genuine value is the **engine, tooling, and honest testing framework**; the bundled strategies should be treated as reference implementations for building and testing your own ideas, not as income sources. Any future strategy claim must clear: aligned indicators, honest fills, walk-forward OOS, and a buy-and-hold comparison.
+
 ## What this means
 
 With a ~40% win rate and a fixed +3%/−2% TP/SL, expectancy is ~zero *before* costs — fees and slippage then make every strategy a net loser. **No current BitFox strategy has a demonstrated edge under realistic fills.** The prior "results" came from the simulator, not the signals.

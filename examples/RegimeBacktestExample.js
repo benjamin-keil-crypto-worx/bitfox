@@ -6,6 +6,8 @@ let {BackTestEngine} = require("../engine/BackTest");
 let symbol = process.argv[2] || "ADAUSDT";
 let timeframe = process.argv[3] || "1h";
 let amount = parseFloat(process.argv[4]) || 1000;
+// optional: number of 200-candle fetches (default 100 = 20k candles); use less for 1d runs
+let pollRate = parseInt(process.argv[5]) || 100;
 
 (async () => {
     console.log(`\nRegime Backtest — ${symbol} ${timeframe} | Capital: ${amount} USDT\n`);
@@ -14,7 +16,7 @@ let amount = parseFloat(process.argv[4]) || 1000;
         exchangeName: "bybit",
         symbol: symbol,
         requiredCandles: 200,
-        pollRate: 100,
+        pollRate: pollRate,
         timeframe: timeframe,
         verbose: false
     });
