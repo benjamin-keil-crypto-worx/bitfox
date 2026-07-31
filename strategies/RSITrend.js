@@ -94,20 +94,26 @@ class RSITrend extends Strategy{
      */
     async run(_index=0, isBackTest=false, ticker=null){
         var me = this;
-        let currPrice = this.kline.o[isBackTest ? _index : this.kline.o.length-1];
-        let currMa = this.maSlow[isBackTest ? _index : this.maSlow.length-1];
-        let currFastMa = this.maFast[isBackTest ? _index : this.maFast.length-1];
-        let currRsi = this.RSI[isBackTest ? _index : this.RSI.length - 1];
+        let currPrice = this.closeAt(_index, isBackTest);
+        let currMa = this.valueAt(this.maSlow, _index, isBackTest);
+        let currFastMa = this.valueAt(this.maFast, _index, isBackTest);
+        let currRsi = this.valueAt(this.RSI, _index, isBackTest);
+        if(currPrice == null || currMa == null || currRsi == null){
+            return this.getStrategyResult(this.state, {reason: 'warmup'});
+        }
 
         if(this.state === this.states.STATE_ENTER_LONG || this.state === this.states.STATE_ENTER_SHORT){
             this.state = this.states.STATE_AWAIT_ORDER_FILLED;
             return this.getStrategyResult(this.state, {});
         }if(this.state === this.states.STATE_PENDING){
 
-            if(currRsi <=30 && currPrice>=currMa ){
+            // mean reversion: buy oversold dips below the slow MA, sell overbought pops above it.
+            // (The previous comparisons were inverted and could never co-occur with correctly
+            // aligned data — they only fired due to the stale-index bug fixed in GHBF-34.)
+            if(currRsi <=30 && currPrice<=currMa ){
                 this.state =  (this.sidePreference === 'long' || this.sidePreference === 'biDirectional') ? this.states.STATE_ENTER_LONG : this.state;
             }
-            if(currRsi >=70 && currPrice<=currMa ){
+            if(currRsi >=70 && currPrice>=currMa ){
                 this.state =  (this.sidePreference === 'short' || this.sidePreference === 'biDirectional') ? this.states.STATE_ENTER_SHORT : this.state;
             }
 

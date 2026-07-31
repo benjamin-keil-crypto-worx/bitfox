@@ -110,9 +110,12 @@ class Bollinger extends Strategy{
      * @return {Promise<{custom: {}, context: null, state, timestamp: number}>}
      */
     async run(_index=0, isBackTest=false, ticker=null){
-        let curBoll = this.bollinger[isBackTest ? _index : this.bollinger.length - 1];
-        let curATR  = this.atr[isBackTest ? _index : this.atr.length - 1];
-        let currPrice = super.getApproximateCurrentPrice(isBackTest,_index);
+        let curBoll = this.valueAt(this.bollinger, _index, isBackTest);
+        let curATR  = this.valueAt(this.atr, _index, isBackTest);
+        let currPrice = this.closeAt(_index, isBackTest);
+        if(curBoll == null || curATR == null || currPrice == null){
+            return this.getStrategyResult(this.state, {reason: 'warmup'});
+        }
         if(this.state === this.states.STATE_ENTER_LONG || this.state === this.states.STATE_ENTER_SHORT){
             this.state = this.states.STATE_AWAIT_ORDER_FILLED;
             return this.getStrategyResult(this.state, {});

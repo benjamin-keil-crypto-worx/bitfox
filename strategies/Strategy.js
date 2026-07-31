@@ -95,6 +95,38 @@ class Strategy {
         return this.indicator;
     }
 
+    /**
+     * Read an indicator array aligned to the backtest candle window.
+     *
+     * The engine trims candles to the length of the LAST-set indicator, so indicator
+     * arrays with a shorter warm-up have extra leading rows: the value for candle
+     * `_index` lives at `arr.length - window + _index`, not at `_index`. Indexing raw
+     * arrays with `_index` reads values that are stale by the warm-up difference.
+     *
+     * @param arr {Array<any>} an indicator array saved during setup()
+     * @param _index {Number} the backtest candle index
+     * @param isBackTest {Boolean} live mode reads the latest value instead
+     * @return {any|null} the aligned value, or null while the indicator is warming up
+     */
+    valueAt(arr, _index, isBackTest){
+        if (!arr || arr.length === 0) return null;
+        let window = this.indicator ? this.indicator.length : arr.length;
+        let i = isBackTest ? arr.length - window + _index : arr.length - 1;
+        return (i >= 0 && i < arr.length) ? arr[i] : null;
+    }
+
+    /**
+     * The close price of the candle at `_index`, aligned to the candle window
+     * (this.kline holds the FULL candle history, which is longer than the window).
+     *
+     * @param _index {Number} the backtest candle index
+     * @param isBackTest {Boolean} live mode reads the latest close
+     * @return {Number|null}
+     */
+    closeAt(_index, isBackTest){
+        return this.valueAt(this.kline ? this.kline.c : null, _index, isBackTest);
+    }
+
 
     /**
      *
@@ -158,7 +190,8 @@ class Strategy {
      * @return {number} the last price of the asset
      */
     getApproximateCurrentPrice(isBackTest,_index){
-        return this.kline.o[isBackTest ? _index : this.kline.c.length-1];
+        // kline holds the FULL candle history; align _index to the trimmed candle window
+        return this.valueAt(this.kline.o, _index, isBackTest);
     }
 
     /**

@@ -140,9 +140,12 @@ class ThorsHammer extends Strategy {
      * @return {Promise<{custom: {}, context: null, state, timestamp: number}>}
      */
     async run(_index=0, isBackTest=false, ticker=null){
-        let currPrice = this.kline.o[isBackTest ? _index : this.kline.o.length-1];
-        let currSlowEma = this.emaSlow[isBackTest ? _index : this.emaSlow.length-1];
-        let currFastEma = this.emaFast[isBackTest ? _index : this.emaFast.length-1];
+        let currPrice = this.closeAt(_index, isBackTest);
+        let currSlowEma = this.valueAt(this.emaSlow, _index, isBackTest);
+        let currFastEma = this.valueAt(this.emaFast, _index, isBackTest);
+        if(currPrice == null || currSlowEma == null || currFastEma == null){
+            return this.getStrategyResult(this.state, {reason: 'warmup'});
+        }
         this.getTrendDirection(currSlowEma,currFastEma)
         if(this.state === this.states.STATE_ENTER_LONG || this.state === this.states.STATE_ENTER_SHORT){
             this.state = this.states.STATE_AWAIT_ORDER_FILLED;
@@ -185,10 +188,10 @@ class ThorsHammer extends Strategy {
             this.clearBuffer();
             return data;
         }else{
-            this.o.push(this.kline.o[isBackTest ? _index : this.kline.o.length-1]);
-            this.h.push(this.kline.h[isBackTest ? _index : this.kline.h.length-1]);
-            this.l.push(this.kline.l[isBackTest ? _index : this.kline.l.length-1]);
-            this.c.push(this.kline.c[isBackTest ? _index : this.kline.c.length-1]);
+            this.o.push(this.valueAt(this.kline.o, _index, isBackTest));
+            this.h.push(this.valueAt(this.kline.h, _index, isBackTest));
+            this.l.push(this.valueAt(this.kline.l, _index, isBackTest));
+            this.c.push(this.valueAt(this.kline.c, _index, isBackTest));
         }
 
         return {

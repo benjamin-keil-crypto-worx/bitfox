@@ -16,18 +16,21 @@ describe('Regime Strategy', function () {
         await strategy.setup(data.data);
     });
 
-    it('sets up all five indicators with aligned offsets', () => {
+    it('sets up all five indicators, aligned to the ADX candle window', () => {
         assert.isAbove(strategy.adx.length, 0);
         assert.isAbove(strategy.superTrend.length, 0);
         assert.isAbove(strategy.rsi.length, 0);
         assert.isAbove(strategy.atr.length, 0);
         assert.isAbove(strategy.bollinger.length, 0);
-        // ADX (2x period warm-up) defines the candle window; every offset must be >= 0
-        for (const [name, off] of Object.entries(strategy.offsets)) {
-            assert.isAtLeast(off, 0, `offset for ${name}`);
-        }
         // the engine aligns against the LAST-set indicator, which must be ADX
+        // (longest warm-up, so every other array covers the whole window)
         assert.equal(strategy.getIndicator().length, strategy.adx.length);
+        for (const arr of [strategy.superTrend, strategy.rsi, strategy.atr, strategy.bollinger]) {
+            assert.isNotNull(strategy.valueAt(arr, 0, true), 'aligned value at window start');
+            assert.isNotNull(strategy.valueAt(arr, strategy.adx.length - 1, true), 'aligned value at window end');
+        }
+        // alignment: the last aligned value equals the raw last element
+        assert.deepEqual(strategy.valueAt(strategy.rsi, strategy.adx.length - 1, true), strategy.rsi[strategy.rsi.length - 1]);
     });
 
     it('starts in STATE_PENDING and setState round-trips', () => {
@@ -87,7 +90,7 @@ describe('Regime Strategy', function () {
         // find an index where the close sits at or above the middle band
         let idx = -1;
         for (let i = 5; i < strategy.adx.length; i++) {
-            const boll = strategy.valueAt(strategy.bollinger, strategy.offsets.bollinger, i, true);
+            const boll = strategy.valueAt(strategy.bollinger, i, true);
             const price = strategy.closeAt(i, true, null);
             if (boll && price >= boll.middle) { idx = i; break; }
         }
