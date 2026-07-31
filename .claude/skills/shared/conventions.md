@@ -15,8 +15,7 @@ Verify the active account is `benjamin-keil-crypto-worx` before any issue, push,
 
 ## Branch model
 
-- `master` — release branch. Never commit or push to it.
-- `develop` — integration branch. All feature PRs target `develop`. Never commit or push to it directly.
+- `develop` — the default and only long-lived branch (master was removed 2026-07-31; releases are cut as tags/GitHub releases from develop). All feature PRs target `develop`. Never commit or push to it directly.
 - `feature/GHBF-<n>-<FeatureName>` — the only branches you create, commit to, and push.
 
 `<n>` is the GitHub issue number (the GHBF ID **is** the issue number — there is no separate counter). `<FeatureName>` is short PascalCase derived from the issue title, e.g. issue #123 "Add regime filter strategy" → `feature/GHBF-123-RegimeFilter`.
@@ -35,7 +34,7 @@ If the check fails, do not push. No exceptions, including "just this once" fixes
 - PR body must contain `Closes #<n>` so the issue auto-closes on merge.
 - PRs always target `develop` (`gh pr create --base develop`).
 - Merge style: **merge commit** (`gh pr merge --merge`) — matches this repo's history. Never squash or rebase-merge.
-- `develop` → `master` promotion is a release decision, out of scope for these skills.
+- Releases are tags/GitHub releases cut from `develop` (triggers the npm-publish workflow) — out of scope for these skills.
 
 ## Review-verdict protocol
 

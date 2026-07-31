@@ -40,14 +40,13 @@ Merge commit style only (repo convention) — never `--squash` or `--rebase`.
 
 ### 3. Confirm issue closure
 
-`Closes #<n>` normally auto-closes only when merging to the **default branch (master)** — merging to `develop` will usually NOT auto-close it. Check and close explicitly:
+`develop` is the repo's default branch, so `Closes #<n>` auto-closes the issue on merge. Verify, and close explicitly if it didn't:
 
 ```bash
 gh issue view <n> --repo benjamin-keil-crypto-worx/bitfox --json state
 gh issue close <n> --repo benjamin-keil-crypto-worx/bitfox --comment "Merged into develop in PR #<PR#>."
 ```
 
-(Skip the close if the user wants issues to stay open until a master release — ask once if unclear, then remember their preference.)
 
 ### 4. Local sync
 
@@ -59,4 +58,4 @@ git fetch --prune
 
 ### 5. Report
 
-Announce: merged PR, merge commit SHA, issue state, branch cleanup done. Note that `develop` → `master` promotion is a separate release decision, not part of this workflow.
+Announce: merged PR, merge commit SHA, issue state, branch cleanup done. Releases are a separate decision: cut a tag/GitHub release from `develop` (the npm-publish workflow triggers on release creation).
