@@ -148,6 +148,7 @@ Access via `this.indicators.ClassName.className`. Key ones:
 - RsiIndicator, AtrIndicator, MacdIndicator, BollingerIndicator
 - EMAIndicator (single), Ema4Indicator (8,13,21,55,100,200)
 - SuperTrendIndicator, AdxIndicator, StochasticIndicator
+- DonchianIndicator (`{upper, lower, middle}` per bar; the channel excludes the current bar so breakouts are detectable)
 - MfiIndicator, CciIndicator, WilliamsRIndicator
 - IndicatorUtils (CrossUp, CrossDown, CrossOver)
 - PatternRecognitionIndicator (25 candlestick patterns)
@@ -173,6 +174,24 @@ this.ema = this.getIndicator();  // ema200 has longest period = last
 **B: Strategy-controlled** — Track `this.inPosition`. Return `STATE_TAKE_PROFIT` or `STATE_STOP_LOSS_TRIGGERED` when exit conditions met. Engine executes the exit.
 
 **C: Context-independent** — Return `STATE_CONTEXT_INDEPENDENT`. Strategy manages everything including order placement. Only for advanced use.
+
+### Position Sizing
+
+Default sizing is fixed notional. A strategy can instead opt into **risk-based sizing** by
+reporting its stop on the entry result:
+
+```js
+return this.getStrategyResult(this.states.STATE_ENTER_LONG, {stopPrice: 95, riskPct: 0.01});
+```
+
+The engine then sizes the position so that price moving from the fill to `stopPrice` costs
+exactly `riskPct` of equity, capped at `maxNotionalMult` x equity (default 1 = no leverage).
+`riskPct` / `maxNotionalMult` can also come from the builder; live trading additionally needs
+`.equity(<quote amount>)` set, since silently re-sizing real orders from an inferred balance
+is not a safe default. Strategies that report no `stopPrice` keep the old fixed-notional behaviour.
+
+This matters more than it looks: on the GHBF-40 screening data the same trades produce a 63%
+median drawdown under fixed notional versus 20.4% when risk-sized. See `DonchianTrend`.
 
 ## Running Tests
 

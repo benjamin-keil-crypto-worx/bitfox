@@ -30,6 +30,7 @@ const {Client} = require("../server/client");
 const {MfiMacd} = require("../strategies/MfiMacd");
 const {Phoenix} = require("../strategies/Phoenix");
 const {Regime} = require("../strategies/Regime");
+const {DonchianTrend} = require("../strategies/DonchianTrend");
 const utils = require("../lib/utility/util");
 const {Errors} = require("../errors/Errors");
 
@@ -324,6 +325,46 @@ class EngineBuilder {
     amount(amount) {
         this.validateTypes(amount, "amount", "number");
         this.args.amount = amount;
+        return this;
+    };
+
+    /***
+     *
+     * @param riskPct {Number} Engine Specific Parameter, the fraction of equity to risk per trade
+     *                         (e.g. 0.01 for 1%). Only takes effect for strategies that report a
+     *                         `stopPrice` on their entry result; everything else stays fixed-notional.
+     *                         In live trading this additionally requires `equity()` to be set.
+     * @returns {EngineBuilder}
+     */
+    riskPct(riskPct) {
+        this.validateTypes(riskPct, "riskPct", "number");
+        this.args.riskPct = riskPct;
+        return this;
+    };
+
+    /***
+     *
+     * @param equity {Number} Engine Specific Parameter, account equity in quote currency used as the
+     *                        base for live risk sizing. Backtests derive equity from their own funds
+     *                        tracking and ignore this.
+     * @returns {EngineBuilder}
+     */
+    equity(equity) {
+        this.validateTypes(equity, "equity", "number");
+        this.args.equity = equity;
+        return this;
+    };
+
+    /***
+     *
+     * @param maxNotionalMult {Number} Engine Specific Parameter, caps a risk-sized position's notional
+     *                                 at this multiple of equity (default 1 = no leverage). Prevents a
+     *                                 very tight stop from implying an enormous position.
+     * @returns {EngineBuilder}
+     */
+    maxNotionalMult(maxNotionalMult) {
+        this.validateTypes(maxNotionalMult, "maxNotionalMult", "number");
+        this.args.maxNotionalMult = maxNotionalMult;
         return this;
     };
 
@@ -771,6 +812,29 @@ class BitFox extends Service {
         this.lastShortEntry = 0;
 
         this.lastAmount = this.amount;
+
+        // risk-based sizing (live). Engages only when riskPct AND equity are configured and the
+        // strategy reports a stopPrice — otherwise orders keep using the fixed configured amount.
+        // Requiring an explicit equity here is deliberate: silently re-sizing real orders from an
+        // inferred balance is not a safe default.
+        this.riskPct = args.riskPct ?? null;
+        this.equity = args.equity ?? null;
+        this.maxNotionalMult = args.maxNotionalMult ?? 1;
+    }
+
+    /**
+     *
+     * @param custom {any} the custom payload from the strategy's entry result
+     * @param entryPrice {Number} the price the entry is expected to fill at
+     * @returns {Number} the size to trade, in base units — the risk-derived size when the strategy
+     *                   supplied a stop and risk sizing is configured, otherwise the fixed amount
+     */
+    resolveOrderAmount(custom, entryPrice) {
+        let riskPct = (custom && custom.riskPct != null) ? custom.riskPct : this.riskPct;
+        let stopPrice = (custom && custom.stopPrice != null) ? custom.stopPrice : null;
+        if (riskPct == null || stopPrice == null || this.equity == null) return this.amount;
+        let size = utils.riskPositionSize(this.equity, entryPrice, stopPrice, riskPct, this.maxNotionalMult);
+        return (size != null && size > 0) ? size : this.amount;
     }
 
     /**
@@ -1005,11 +1069,11 @@ class BitFox extends Service {
     async executeStrategyContext(result, me) {
         switch (result.state) {
             case State.STATE_ENTER_LONG : {
-                await this.enterLong(me);
+                await this.enterLong(me, result.custom);
             }
                 break;
             case State.STATE_ENTER_SHORT: {
-                await this.enterShort(me);
+                await this.enterShort(me, result.custom);
             }
                 break;
             case State.STATE_TAKE_PROFIT: {
@@ -1211,16 +1275,17 @@ class BitFox extends Service {
      * @param me {BitFox}
      * @returns {Promise<void>} places a Sell order to enter a short trade/position
      */
-    async enterShort(me) {
+    async enterShort(me, custom = null) {
         let oB = await me.fetchOrderBook(me.symbol, 20, {})
         let askPrice = oB.asks[0][0];
+        let amount = me.resolveOrderAmount(custom, askPrice);
         if( me.useLimitOrder ) {
-          me.sellOrder = await me.limitSellOrder(me.symbol, me.amount, askPrice, {})
+          me.sellOrder = await me.limitSellOrder(me.symbol, amount, askPrice, {})
         }else {
-            me.sellOrder = await  me.marketSellOrder(me.symbol, me.amount, {})
+            me.sellOrder = await  me.marketSellOrder(me.symbol, amount, {})
         }
         me.lastShortEntry = askPrice;
-        me.lastAmount = me.amount;
+        me.lastAmount = amount;
         me.currentSide = 'sell';
         me.foxStrategy.setState(State.STATE_AWAIT_ORDER_FILLED);
         me.eventHandler.fireEvent("onOrderPlaced", {timestamp:new Date().getTime(), order:me.sellOrder});
@@ -1231,17 +1296,18 @@ class BitFox extends Service {
      * @param me {BitFox}
      * @returns {Promise<void>} places a Sell order to enter a long trade/position
      */
-    async enterLong(me) {
+    async enterLong(me, custom = null) {
         let oB = await me.fetchOrderBook(me.symbol, 20, {})
         let bidPrice = oB.bids[0][0];
-        
+        let amount = me.resolveOrderAmount(custom, bidPrice);
+
         if( me.useLimitOrder ) {
-            me.buyOrder = await me.limitBuyOrder(me.symbol, me.amount, bidPrice, {})
+            me.buyOrder = await me.limitBuyOrder(me.symbol, amount, bidPrice, {})
         } else {
-              me.buyOrder = await  me.marketBuyOrder(me.symbol, me.amount, bidPrice)
+              me.buyOrder = await  me.marketBuyOrder(me.symbol, amount, bidPrice)
         }
         me.lastLongEntry = bidPrice;
-        me.lastAmount = me.amount;
+        me.lastAmount = amount;
         me.currentSide = 'buy';
         me.foxStrategy.setState(State.STATE_AWAIT_ORDER_FILLED);
         me.eventHandler.fireEvent("onOrderPlaced", {timestamp:new Date().getTime(), order:me.buyOrder});
@@ -1322,6 +1388,7 @@ module.exports = {
     DynamicGrid:DynamicGrid,
     Phoenix:Phoenix,
     Regime:Regime,
+    DonchianTrend:DonchianTrend,
     utils:utils,
     getModels:getModels,
     DataLoaderBuilder:DataLoaderBuilder,

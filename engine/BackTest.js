@@ -106,6 +106,10 @@ class BackTest {
         this.makerFee = args.makerFee ?? 0.001;
         this.takerFee = args.takerFee ?? 0.001;
         this.slippage = args.slippage ?? 0.0005;
+        // risk-based sizing: only active when a strategy supplies a stopPrice on its entry
+        // result (and a riskPct is available). Otherwise sizing stays fixed-notional as before.
+        this.riskPct = args.riskPct ?? null;
+        this.maxNotionalMult = args.maxNotionalMult ?? 1;
         this.sharpeRatio = 0;
         this.metrics = null;
 
@@ -318,13 +322,13 @@ class BackTest {
 
         switch (result.state) {
             case State.STATE_ENTER_LONG : {
-                this.handleStateLong(currentCandles);
+                this.handleStateLong(currentCandles, result.custom);
                 if(!this.adjustForBalance) {this.adjustForBalance = true};
 
             }
                 break;
             case State.STATE_ENTER_SHORT: {
-                this.handleStateShort(currentCandles);
+                this.handleStateShort(currentCandles, result.custom);
                 if(!this.adjustForBalance) {this.adjustForBalance = true};
             }
                 break;
@@ -426,8 +430,9 @@ class BackTest {
      * @returns {void} Method to handle state Short meaning the Backtest engine has determined a short
      *                 position can be entered
      */
-    handleStateShort(currentCandles) {
+    handleStateShort(currentCandles, custom = null) {
         this.adjustEntryBalance(currentCandles);
+        this.applyRiskSizing(currentCandles, custom, 'short');
         this.strategy.setState(State.STATE_AWAIT_TAKE_PROFIT);
         let sO = this.mockService.limitSellOrder(this.args.symbol, this.args.amount,  currentCandles[4] * (1 - this.slippage),);
         this.tradeHistory.push(
@@ -442,8 +447,9 @@ class BackTest {
      * @returns {void} Method to handle state Short meaning the Backtest engine has determined a long
      *                 position can be entered
      */
-    handleStateLong(currentCandles) {
+    handleStateLong(currentCandles, custom = null) {
         this.adjustEntryBalance(currentCandles);
+        this.applyRiskSizing(currentCandles, custom, 'long');
         this.strategy.setState(State.STATE_AWAIT_TAKE_PROFIT);
         let bO = this.mockService.limitBuyOrder(this.args.symbol, this.args.amount, currentCandles[4] * (1 + this.slippage))
         this.tradeHistory.push(
@@ -480,6 +486,31 @@ class BackTest {
             this.funds = this.initialFunds;
             this.args.amount = this.initialFunds / currentCandles[4];
         }
+    }
+
+    /**
+     *
+     * @param currentCandles {Array}  open, high, low, close and volume values
+     * @param custom {any} the custom payload from the strategy's entry result; risk sizing engages
+     *                     only when it carries a `stopPrice` (and `riskPct`, here or on the engine)
+     * @param side {String} 'long' or 'short'
+     * @returns {void} Sizes the entry so that price travelling from the fill to the strategy's stop
+     *                 costs exactly riskPct of current equity. Deliberately a no-op when the strategy
+     *                 supplies no stop, which leaves the pre-existing fixed-notional behaviour intact
+     *                 for every strategy that predates this.
+     *
+     *                 Runs AFTER adjustEntryBalance so it overrides, rather than is overridden by,
+     *                 the initial `initialFunds / price` seeding.
+     */
+    applyRiskSizing(currentCandles, custom, side) {
+        if(!custom) return;
+        let riskPct = custom.riskPct ?? this.riskPct;
+        let stopPrice = custom.stopPrice;
+        if(riskPct == null || stopPrice == null) return;
+        let entryPrice = currentCandles[4] * (side === 'long' ? (1 + this.slippage) : (1 - this.slippage));
+        let equity = (this.funds != null && this.funds > 0) ? this.funds : this.initialFunds;
+        let size = util.riskPositionSize(equity, entryPrice, stopPrice, riskPct, this.maxNotionalMult);
+        if(size != null && size > 0){ this.args.amount = size; }
     }
 
     /**
