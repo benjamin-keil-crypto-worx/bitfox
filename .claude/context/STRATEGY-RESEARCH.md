@@ -5,7 +5,20 @@
 
 ---
 
-## 1. TL;DR verdict
+## 0. UPDATE 2026-07-31 (later same day): engine fixed, honest baseline established
+
+GHBF-26 (branch `feature/GHBF-26-BacktestRealism`, issue #26) fixed findings (a)–(e), (h), (i) below. Re-running the benchmarks on the fixed engine settles §1's question:
+
+**Under realistic fills, every current strategy loses money.** ADAUSDT 1h: PF 0.74–0.85, Sharpe −0.4 to −3.0, all negative returns. BTCUSDT 1h: PF 0.58–0.86, all negative. ADAUSDT 15m: SuperTrend PF 0.93 (−13%), SuperTrendFull PF 0.64 (−63%, 29.5% WR once its dropped trades are counted). The old headline numbers were 100% fill-model artifact. Full tables in `BENCHMARKS.md` (rewritten with methodology note).
+
+Consequences for the build session:
+- §5 steps 1–3 are DONE. Go straight to building the §6 "Regime" strategy against the fixed engine.
+- The honest baseline to beat is now **PF ≈ 0.85 and buy-and-hold**, not the old fictional PF 3+.
+- Key insight from the collapse: fixed +3%/−2% TP/SL with ~40% WR is structurally negative-expectancy after costs. The new strategy MUST manage its own exits (ATR-scaled, regime-aware) — finding-driven confirmation of §6's design.
+- `examples/StrategyBenchmark.js` was refactored to load data once and run `BackTestEngine` directly (9× fewer API calls, seconds instead of minutes per strategy after the load).
+- GHBF-27 (issue #27) covers the remaining findings (f), (g), (j), (k) + repo hardening.
+
+## 1. TL;DR verdict (pre-fix analysis, kept for context)
 
 **The current backtest engine cannot certify ANY strategy as good.** Fresh runs show all 8 runnable strategies wildly profitable (PF 1.6–4.5, avg +0.5–1.2% per trade, on both ADAUSDT and BTCUSDT) — which is not alpha, it's a systematically biased fill model:
 
