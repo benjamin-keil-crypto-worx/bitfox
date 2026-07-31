@@ -1,0 +1,73 @@
+# ──────────────────────────────────────────────────────────────
+# BitFox — Docker Compose
+# YAML is Portainer-ready (copy as stack in Portainer UI).
+#
+# Two pre-configured bot instances:
+#   bitfox-phoenix      Phoenix on 1h     (best for ADA, SOL, DOGE)
+#   bitfox-supertrend   SuperTrend on 15m (best for volatile alts)
+#
+# Usage:
+#   docker compose up -d
+#   docker compose logs -f bitfox-phoenix
+#
+# Portainer: Add Stack → copy this file → fill in env vars below.
+# ──────────────────────────────────────────────────────────────
+
+services:
+  bitfox-phoenix:
+    build: .
+    container_name: bitfox-phoenix
+    restart: unless-stopped
+    environment:
+      - STRATEGY=Phoenix
+      - SYMBOL=ADAUSDT
+      - TIMEFRAME=1h
+      - AMOUNT=50
+      - BYBIT_API_KEY=${BYBIT_API_KEY:?Set BYBIT_API_KEY in .env or environment}
+      - BYBIT_API_SECRET=${BYBIT_API_SECRET:?Set BYBIT_API_SECRET in .env or environment}
+      - NOTIFICATION_TYPE=${NOTIFICATION_TYPE:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - EMAIL_FROM=${EMAIL_FROM:-}
+      - EMAIL_TO=${EMAIL_TO:-}
+      - NTFY_TOPIC=${NTFY_TOPIC:-}
+      - NTFY_ADDRESS=${NTFY_ADDRESS:-}
+    volumes:
+      - phoenix-logs:/app/logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  bitfox-supertrend:
+    build: .
+    container_name: bitfox-supertrend
+    restart: unless-stopped
+    environment:
+      - STRATEGY=SuperTrend
+      - SYMBOL=ADAUSDT
+      - TIMEFRAME=15m
+      - AMOUNT=50
+      - BYBIT_API_KEY=${BYBIT_API_KEY:?Set BYBIT_API_KEY in .env or environment}
+      - BYBIT_API_SECRET=${BYBIT_API_SECRET:?Set BYBIT_API_SECRET in .env or environment}
+      - NOTIFICATION_TYPE=${NOTIFICATION_TYPE:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - EMAIL_FROM=${EMAIL_FROM:-}
+      - EMAIL_TO=${EMAIL_TO:-}
+      - NTFY_TOPIC=${NTFY_TOPIC:-}
+      - NTFY_ADDRESS=${NTFY_ADDRESS:-}
+    volumes:
+      - supertrend-logs:/app/logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  phoenix-logs:
+  supertrend-logs:

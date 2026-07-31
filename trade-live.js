@@ -64,27 +64,27 @@ let builderInstance = builder()
     .key(key)
     .secret(secret);
 
-let notifType = process.env.NOTIFICATION_TYPE;
-let notifToken = process.env.TELEGRAM_BOT_TOKEN || process.env.SLACK_WEBHOOK_URL;
+let notifyType = process.env.NOTIFICATION_TYPE;
+let notifyToken = process.env.TELEGRAM_BOT_TOKEN || process.env.SLACK_WEBHOOK_URL;
 
-if (notifType && notifToken) {
+if (notifyType && notifyToken) {
     builderInstance = builderInstance
-        .type(notifType)
-        .notificationToken(notifToken);
+        .type(notifyType)
+        .notificationToken(notifyToken);
 
-    if (notifType === 'telegram' && process.env.TELEGRAM_CHAT_ID) {
+    if (notifyType === 'telegram' && process.env.TELEGRAM_CHAT_ID) {
         builderInstance = builderInstance.telegramChatId(process.env.TELEGRAM_CHAT_ID);
     }
-    if (notifType === 'email') {
+    if (notifyType === 'email') {
         if (process.env.EMAIL_FROM) builderInstance = builderInstance.emailFrom(process.env.EMAIL_FROM);
         if (process.env.EMAIL_TO) builderInstance = builderInstance.emailTo(process.env.EMAIL_TO);
     }
-    if (notifType === 'ntfy') {
+    if (notifyType === 'ntfy') {
         if (process.env.NTFY_TOPIC) builderInstance = builderInstance.ntfyTopic(process.env.NTFY_TOPIC);
         if (process.env.NTFY_ADDRESS) builderInstance = builderInstance.ntfyAddress(process.env.NTFY_ADDRESS);
     }
 
-    console.log(`[BitFox] Notifications enabled: ${notifType}`);
+    console.log(`[BitFox] Notifications enabled: ${notifyType}`);
 } else {
     console.log("[BitFox] No notifications configured");
 }

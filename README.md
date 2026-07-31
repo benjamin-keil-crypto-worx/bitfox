@@ -129,3 +129,39 @@ let {BitFoxEngine, Strategy, SuperTrend, builder} = require("bitfox").bitfox;
     await engine.run();
 })();
 ```
+
+<h3> Docker Deployment </h3>
+
+Deploy BitFox as a container in seconds — works with Portainer, Docker Compose, or plain Docker.
+
+**Quick start with single bot:**
+
+```bash
+# 1. Set your API keys
+cp docker/.env.example .env
+nano .env        # fill in BYBIT_API_KEY and BYBIT_API_SECRET
+
+# 2. Build and start
+docker compose -f docker-compose.single.yml up -d
+
+# 3. Watch logs
+docker compose -f docker-compose.single.yml logs -f
+```
+
+**Multi-bot stack (Phoenix 1h + SuperTrend 15m):**
+
+```bash
+docker compose up -d
+docker compose logs -f bitfox-phoenix
+docker compose logs -f bitfox-supertrend
+```
+
+**Portainer:** Add Stack → paste `docker-compose.yml` contents → set the 4 required environment variables (`BYBIT_API_KEY`, `BYBIT_API_SECRET`, `SYMBOL`, `STRATEGY`).
+
+| Strategy | Best Timeframe | Best For |
+|----------|---------------|----------|
+| **Phoenix** | 1h+ | ADA, SOL, DOGE — multi-indicator, fewer bigger wins |
+| **SuperTrend** | 15m | Volatile alts — simple, fast, more trades |
+| **SuperTrendFull** | 15m-1h | Best risk-adjusted returns — trend-reversal exits |
+
+Swap `STRATEGY` in the compose env vars or `.env` to switch. See [BENCHMARKS.md](BENCHMARKS.md) for full results.

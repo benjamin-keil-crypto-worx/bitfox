@@ -1,5 +1,7 @@
 # BitFox Strategy Benchmarks
 
+> **🐳 Docker quick-start:** `docker compose up -d` deploys Phoenix (1h) + SuperTrend (15m) side by side. See [README.md](README.md) for details.
+
 All benchmarks run against **real Bybit historical data** via CCXT. Results include 0.1% taker fees and realistic slippage. Backtest period: ~12-18 months of 1h candles.
 
 ---
