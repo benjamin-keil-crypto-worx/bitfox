@@ -24,10 +24,12 @@ if (fs.existsSync(envPath)) {
     console.log("[BitFox] Loaded .env config");
 }
 
-let strategyName = process.env.STRATEGY || 'Phoenix';
-let symbol = process.env.SYMBOL || 'ADAUSDT';
-let timeframe = process.env.TIMEFRAME || '1h';
+let strategyName = process.env.STRATEGY || 'DonchianTrend';
+let symbol = process.env.SYMBOL || 'BTCUSDT';
+let timeframe = process.env.TIMEFRAME || '1d';
 let amount = parseFloat(process.env.AMOUNT) || 50;
+let riskPct = process.env.RISK_PCT ? parseFloat(process.env.RISK_PCT) : null;
+let equity = process.env.EQUITY ? parseFloat(process.env.EQUITY) : null;
 let key = process.env.BYBIT_API_KEY;
 let secret = process.env.BYBIT_API_SECRET;
 
@@ -52,19 +54,41 @@ if (!StrategyClass) {
     process.exit(1);
 }
 
+// Strategies that emit their own STATE_TAKE_PROFIT / STATE_STOP_LOSS_TRIGGERED must NOT be given
+// tight engine TP/SL: the engine would close the position at +3%/-2% long before the strategy's
+// own ATR stop or channel exit fires, which silently turns it into a different (worse) strategy.
+// They get wide disaster backstops instead.
+const SELF_MANAGED_EXITS = ['DonchianTrend', 'Regime', 'Phoenix', 'SuperTrendFull'];
+let selfManaged = SELF_MANAGED_EXITS.includes(strategyName);
+let profitPct = selfManaged ? 10 : 1.03;
+let stopLossPct = selfManaged ? 0.90 : 0.98;
+
 console.log(`[BitFox] Starting live trading`);
 console.log(`[BitFox] Strategy: ${strategyName} | ${symbol} ${timeframe} | Amount: ${amount} USDT`);
+console.log(`[BitFox] Exits: ${selfManaged ? 'strategy-managed (engine TP/SL are wide backstops)' : `engine-managed (TP ${profitPct} / SL ${stopLossPct})`}`);
 
 let builderInstance = builder()
     .exchange("bybit")
     .symbol(symbol)
     .timeframe(timeframe)
     .amount(amount)
-    .profitPct(1.03)
-    .stopLossPct(0.98)
+    .profitPct(profitPct)
+    .stopLossPct(stopLossPct)
     .life(true)
     .key(key)
     .secret(secret);
+
+// Risk-based position sizing needs BOTH a risk fraction and an explicit account equity; without
+// them the engine falls back to the fixed AMOUNT above. Deliberately opt-in — sizing real orders
+// from an inferred balance is not a safe default.
+if (riskPct != null && equity != null) {
+    builderInstance = builderInstance.riskPct(riskPct).equity(equity);
+    console.log(`[BitFox] Risk sizing: ${(riskPct * 100).toFixed(2)}% of ${equity} equity per trade`);
+} else if (riskPct != null || equity != null) {
+    console.log("[BitFox] WARNING: RISK_PCT and EQUITY must BOTH be set for risk sizing — falling back to fixed AMOUNT");
+} else {
+    console.log(`[BitFox] Fixed position size: ${amount}`);
+}
 
 let notifyType = process.env.NOTIFICATION_TYPE;
 let notifyToken = process.env.TELEGRAM_BOT_TOKEN || process.env.SLACK_WEBHOOK_URL;
@@ -102,22 +126,21 @@ let engine = builderInstance.build();
         engine.applyStrategy(StrategyClass);
         console.log(`[BitFox] Strategy applied: ${strategyName}`);
 
-        if (strategyName === 'Phoenix') {
-            engine.on("onOrderPlaced", (data) => {
-                console.log(`[Trade] Order placed: ${data.order.side} ${data.order.amount} @ ${data.order.price}`);
-            });
-            engine.on("onTradeComplete", (data) => {
-                console.log(`[Trade] Complete: entry=${data.entryOrder.price} exit=${data.exitOrder.price}`);
-            });
-            engine.on("onStopLossTriggered", (data) => {
-                console.log(`[Trade] Stop loss: entry=${data.entryOrder.price} exit=${data.exitOrder.price}`);
-            });
-            engine.on("onStrategyResponse", (data) => {
-                if (data.result && data.result.state) {
-                    console.log(`[Signal] ${data.result.state}${data.result.custom?.reason ? ' - ' + data.result.custom.reason : ''}`);
-                }
-            });
-        }
+        // trade logging applies to every strategy — it used to be gated on Phoenix for no reason
+        engine.on("onOrderPlaced", (data) => {
+            console.log(`[Trade] Order placed: ${data.order.side} ${data.order.amount} @ ${data.order.price}`);
+        });
+        engine.on("onTradeComplete", (data) => {
+            console.log(`[Trade] Complete: entry=${data.entryOrder.price} exit=${data.exitOrder.price}`);
+        });
+        engine.on("onStopLossTriggered", (data) => {
+            console.log(`[Trade] Stop loss: entry=${data.entryOrder.price} exit=${data.exitOrder.price}`);
+        });
+        engine.on("onStrategyResponse", (data) => {
+            if (data.result && data.result.state) {
+                console.log(`[Signal] ${data.result.state}${data.result.custom?.reason ? ' - ' + data.result.custom.reason : ''}`);
+            }
+        });
 
         engine.on("onError", (error) => {
             console.error(`[Error] ${error.message || error}`);

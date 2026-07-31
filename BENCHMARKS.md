@@ -74,32 +74,82 @@ With aligned indicators (GHBF-34), the full sweep across 1h/4h/1d on ADA and BTC
 - ADA 1h: OOS aggregate **−69.9%** (all 4 folds negative); a fold with train PF 2.27 delivered OOS PF 0.95
 - ADA 4h: OOS aggregate **−201.4%** (3 of 4 folds negative); train-best params flip fold to fold
 
+## DonchianTrend (GHBF-40) — the one strategy with a positive walk-forward result
+
+Everything above is short-horizon oscillator signals, and all of them fail. `DonchianTrend` is a
+different family: **daily breakout trend-following** with ATR stops and **risk-based position sizing**.
+
+`node examples/DonchianWalkForward.js 1d 1000 12 4` — 8 symbols (SOL/ADA/DOGE/BTC/ETH/XRP/LINK/AVAX),
+4 folds, 8-config grid selected on train windows only, results pooled across symbols:
+
+| Metric | Result | Ship bar |
+|---|---|---|
+| Pooled OOS profit factor | **1.456** (334 trades) | ≥ 1.2 on ≥ 50 — **pass** |
+| Aggregate OOS return | **+43.7%** | positive — **pass** |
+| Folds non-negative | **2 of 4** | ≥ 3 of 4 — **FAIL** |
+| Worst-fold max drawdown | **4.3%** | < 30% — **pass** |
+| Beats buy-and-hold | **4 of 8 symbols** | ≥ 1 — **pass** |
+| Win rate | 30.5% | low WR is expected here |
+
+Per-fold: −3.4% / **+23.8%** / **+29.1%** / −5.8%. All 8 symbols are individually positive
+out-of-sample (SOL +10.4%, DOGE +7.8%, ETH +7.2%, AVAX +6.1%, ADA +4.7%, BTC +3.0%, LINK +3.0%, XRP +1.5%).
+
+**Read the failure honestly.** Folds 1 and 4 are negative, and fold 4 is the *most recent* period —
+the uncomfortable direction for a robustness failure. The edge is also tail-dependent: in screening,
+excluding the best 5 of 276 trades dropped the profit factor to 0.96. That concentration is the
+genuine signature of trend following, but it means a user can trade this correctly for a year and
+still be down while waiting for the few moves that pay.
+
+**Why position sizing is half the story.** Identical trades, only the sizing differs:
+
+| Sizing | Median max drawdown | Symbols ending negative |
+|---|---|---|
+| Fixed notional (what every older strategy uses) | **63%** | 3 of 8 |
+| 1% equity risk per trade | **20.4%** | 0 of 8 |
+
+Profit factor is 1.49 either way. A fixed size risks a wildly different fraction of equity on a
+tight stop than a wide one, and the wide-stop trades are what create the deep drawdowns. This is a
+plausible partial explanation for why every other strategy in this file failed — they were all
+measured under a sizing model that turns a positive per-trade edge into a wrecked equity curve.
+
+> The OOS returns above are at `riskPct: 0.01` — about 1% of equity risked per trade, hence the
+> 1–4% drawdowns. That is far less exposure than buy-and-hold's 100%, so the symbols where it
+> "loses" to buy-and-hold are **not** a like-for-like comparison of absolute return.
+
 ### Go / no-go verdicts
 
 | Candidate | Verdict | Why |
 |---|---|---|
+| **DonchianTrend @ 1d** | **Borderline — the best available** | Pooled OOS PF 1.456 on 334 trades, positive on all 8 symbols; fails only the ≥3/4-folds robustness check |
 | Any strategy @ 1h | **No-go** | All PF < 1 on both symbols, aligned data |
 | Phoenix @ ADA 4h | **No-go (watch)** | PF 1.05 is within noise; PF 0.78 on BTC 4h shows it doesn't generalize |
 | Bollinger @ BTC 1d | **No-go (watch)** | PF 1.20 but n=14 trades — no statistical power |
 | Regime (any TF) | **No-go** | Walk-forward OOS decisively negative; train winners don't persist |
-| Buy-and-hold | Benchmark | Beat every strategy in every tested window |
+| Buy-and-hold | Benchmark | Beat every strategy except DonchianTrend in every tested window |
 
-**Bottom line:** under honest fills, none of the classic indicator signals in this library — at any tested timeframe, with or without regime filtering, with or without walk-forward parameter selection — shows a real edge over costs, and none beats buy-and-hold. BitFox's genuine value is the **engine, tooling, and honest testing framework**; the bundled strategies should be treated as reference implementations for building and testing your own ideas, not as income sources. Any future strategy claim must clear: aligned indicators, honest fills, walk-forward OOS, and a buy-and-hold comparison.
+**Bottom line:** under honest fills, none of the *classic oscillator* signals in this library shows an
+edge over costs at any tested timeframe. One strategy — `DonchianTrend`, daily breakout trend-following
+with risk sizing — does clear five of the six ship-bar criteria out-of-sample, and it is the only one
+worth running. BitFox's core value is still the **engine, tooling, and honest testing framework**; treat
+every other bundled strategy as a reference implementation, not an income source. Any future strategy
+claim must clear: aligned indicators, honest fills, walk-forward OOS, and a buy-and-hold comparison.
 
 ## What this means
 
-With a ~40% win rate and a fixed +3%/−2% TP/SL, expectancy is ~zero *before* costs — fees and slippage then make every strategy a net loser. **No current BitFox strategy has a demonstrated edge under realistic fills.** The prior "results" came from the simulator, not the signals.
+With a ~40% win rate and a fixed +3%/−2% TP/SL, expectancy is ~zero *before* costs — fees and slippage then make every such strategy a net loser. The prior "results" came from the simulator, not the signals.
 
-This is the honest starting line. The path forward (see `.claude/context/STRATEGY-RESEARCH.md`):
+What actually changed the picture (see `.claude/context/STRATEGY-LEDGER.md`):
 
 1. Strategies need real exit logic (ATR-scaled, regime-aware) instead of fixed 3%/2% targets — the engine now rewards it honestly.
-2. New strategies should beat this baseline and buy-and-hold, not the old fictional numbers.
-3. Treat any strategy result without a stated fill model with suspicion — here and everywhere else.
+2. **Position sizing is not a detail.** A positive per-trade edge still produces a 63% drawdown under fixed notional. Risk-based sizing is what makes an edge survivable.
+3. The winning horizon was longer and the trade count lower than anyone was looking for — daily breakouts, ~8-12 trades per symbol per year, not 1h oscillators.
+4. Treat any strategy result without a stated fill model with suspicion — here and everywhere else.
 
 ## Strategy Guide
 
 | Strategy | Style | Honest status (2026-07-31) |
 |----------|-------|----------------------------|
+| **DonchianTrend** | Daily breakout trend following, ATR stop + channel exit, risk-sized | **The only one with a positive walk-forward OOS result** — pooled PF 1.456 on 334 trades. Fails the ≥3/4-folds robustness check. Needs `TIMEFRAME=1d` and patience |
 | **Phoenix** | Multi-indicator trend scoring, ATR exits | No edge under realistic fills (PF 0.58–0.75) |
 | **SuperTrendFull** | Trend following, reversal exits | No edge; previous headline numbers were fill-model artifacts |
 | **SuperTrend** | Trend following, fixed TP/SL | Closest to breakeven on 15m (PF 0.93) |
@@ -163,11 +213,26 @@ Fill in at minimum:
 ```ini
 BYBIT_API_KEY=your_key_here
 BYBIT_API_SECRET=your_secret_here
-SYMBOL=ADAUSDT
-TIMEFRAME=1h
-AMOUNT=50
-STRATEGY=Phoenix
+
+SYMBOL=BTCUSDT
+TIMEFRAME=1d
+STRATEGY=DonchianTrend
+
+# risk-based sizing — BOTH are required, or the bot falls back to fixed AMOUNT
+RISK_PCT=0.01      # risk 1% of equity per trade
+EQUITY=1000        # your account size in USDT
+AMOUNT=50          # fallback fixed size
 ```
+
+`DonchianTrend` is the recommended default and the only strategy with a positive walk-forward
+out-of-sample result. Two things to understand before you start it:
+
+- **It trades daily and rarely.** Expect roughly 8–12 trades per symbol per year and a ~30% win
+  rate. Long quiet stretches are normal behaviour, not a broken bot. Do not switch it to 1h — the
+  edge does not exist there, and that is measured, not assumed.
+- **It is not a sure thing.** It fails one of the six ship-bar criteria (two of four walk-forward
+  folds are negative, including the most recent one), and most of its return comes from a handful
+  of large winners. Read the DonchianTrend section above in full.
 
 > **Security**: Bybit API keys should only have Trade and Read permissions. Never enable Withdraw.
 
@@ -213,22 +278,40 @@ pm2 restart bitfox
 
 ### Switching Strategies
 
-Edit `.env` and change `STRATEGY`:
+Edit `.env` and change `STRATEGY`, then restart with `pm2 restart bitfox`:
 
 ```ini
-STRATEGY=SuperTrendFull   # Best risk-adjusted returns
-STRATEGY=Phoenix           # Best absolute returns on 1h+
-STRATEGY=SuperTrend        # Simpler, more trades on 15m
+STRATEGY=DonchianTrend   # Recommended. Daily trend following. The only positive OOS result
+STRATEGY=Regime          # Reference implementation — walk-forward OOS was negative
+STRATEGY=Phoenix         # Reference implementation — no edge under honest fills
+STRATEGY=SuperTrend      # Reference implementation — no edge under honest fills
 ```
 
-Then restart: `pm2 restart bitfox`
+Only the first is worth running with money. The others are kept as working examples of the strategy
+contract; their honest numbers are in the table above, and none of them clears costs.
+
+**Match the timeframe to the strategy.** `DonchianTrend` needs `TIMEFRAME=1d`. Running it on 1h does
+not make it trade more profitably, it makes it lose — every 1h signal in this library fails the cost
+hurdle, which is a measured result rather than an opinion.
+
+`trade-live.js` automatically gives strategies that manage their own exits (`DonchianTrend`, `Regime`,
+`Phoenix`, `SuperTrendFull`) wide engine backstops instead of the 3%/2% take-profit and stop-loss. If
+you add your own self-exiting strategy, add it to `SELF_MANAGED_EXITS` in `trade-live.js` or the engine
+will close your positions before your own exit logic ever runs.
 
 ### Going Live
 
-1. **Paper trade first** — the bot defaults to paper mode when `life` is not explicitly set. Run for at least a week to verify signals match expectations.
-2. **Start small** — when going live, use $10-20 per trade.
-3. **Monitor daily** — check logs, verify positions, watch for exchange API changes.
-4. **Don't overtune** — the strategies are already optimized. Small parameter tweaks won't improve results and may cause overfitting.
+1. **Paper trade first** — the bot defaults to paper mode when `life` is not explicitly set. On a daily
+   strategy, "a week" is only one or two trades; run it long enough to see several signals before
+   trusting it.
+2. **Start small** — when going live, use $10-20 per trade, or set `RISK_PCT` low (0.005 = 0.5%).
+3. **Monitor** — check logs, verify positions, watch for exchange API changes.
+4. **Don't tune the parameters.** This is not because they are already optimal — it is because
+   walk-forward testing showed that parameter sets which win on training data flip to losers on the
+   next fold. Tweaking numbers until a backtest looks good is the single most reliable way to build a
+   strategy that loses money live.
+5. **Expect drawdown.** Even the recommended configuration has losing folds, and its return is carried
+   by a few large winners. Never allocate money you need.
 
 ### Troubleshooting
 

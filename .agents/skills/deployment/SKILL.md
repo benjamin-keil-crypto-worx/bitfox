@@ -18,11 +18,20 @@ Edit `.env`:
 ```ini
 BYBIT_API_KEY=xxx
 BYBIT_API_SECRET=xxx
-SYMBOL=ADAUSDT
-TIMEFRAME=1h
+SYMBOL=BTCUSDT
+TIMEFRAME=1d
+STRATEGY=DonchianTrend
+
+# risk sizing — BOTH required or it falls back to fixed AMOUNT
+RISK_PCT=0.01
+EQUITY=1000
 AMOUNT=50
-STRATEGY=Phoenix
 ```
+
+`DonchianTrend` is the recommended default: the only strategy with a positive walk-forward OOS
+result (pooled PF 1.456 / 334 trades). It needs `TIMEFRAME=1d` and trades ~8-12x per year.
+`trade-live.js` gives self-exiting strategies wide engine backstops automatically — see
+`SELF_MANAGED_EXITS` there before adding your own.
 
 ## Telegram Alerts
 
