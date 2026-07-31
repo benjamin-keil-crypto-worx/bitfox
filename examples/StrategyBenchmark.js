@@ -25,6 +25,8 @@ const strategies = [
 let symbol = process.argv[2] || "ADAUSDT";
 let timeframe = process.argv[3] || "1h";
 let amount = parseFloat(process.argv[4]) || 1000;
+// optional: number of 200-candle fetches (default 100 = 20k candles); use less for 1d runs
+let pollRate = parseInt(process.argv[5]) || 100;
 
 async function runStrategy(strategyName, StrategyClass, candles) {
     try {
@@ -76,7 +78,7 @@ async function runStrategy(strategyName, StrategyClass, candles) {
         exchangeName: "bybit",
         symbol: symbol,
         requiredCandles: 200,
-        pollRate: 100,
+        pollRate: pollRate,
         timeframe: timeframe,
         verbose: false
     });
@@ -84,7 +86,7 @@ async function runStrategy(strategyName, StrategyClass, candles) {
         public: true,
         options: {'defaultType': 'spot', 'adjustForTimeDifference': true, 'recvwindow': 7000}
     });
-    process.stdout.write(`  Loading ${200 * 100} ${timeframe} candles from bybit... `);
+    process.stdout.write(`  Loading up to ${200 * pollRate} ${timeframe} candles from bybit... `);
     let candles = await dataLoader.load();
     console.log(`done (${candles.length} candles)\n`);
 
