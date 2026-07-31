@@ -17,7 +17,7 @@ const {Strategy} = require("./Strategy")
  * backstops only (e.g. profitPct 10, stopLossPct 0.90).
  *
  * Indicator arrays have different warm-ups; this strategy aligns every array to the
- * candle window of the LAST-set indicator via explicit offsets (do not index them raw).
+ * candle window of the LAST-set indicator via Strategy.valueAt (do not index them raw).
  */
 class Regime extends Strategy {
 
@@ -82,27 +82,12 @@ class Regime extends Strategy {
         this.setIndicator(klineCandles, {period: this.adxPeriod}, this.indicators.AdxIndicator.className);
         this.adx = this.getIndicator();
 
-        // align every array to the ADX candle window: value for candle i is arr[offset + i]
-        let window = this.adx.length;
-        this.offsets = {
-            superTrend: this.superTrend.length - window,
-            rsi: this.rsi.length - window,
-            atr: this.atr.length - window,
-            bollinger: this.bollinger.length - window,
-            adx: 0,
-            close: this.kline.c.length - window,
-        };
         return this;
-    }
-
-    valueAt(arr, offset, _index, isBackTest) {
-        let i = isBackTest ? offset + _index : arr.length - 1;
-        return (i >= 0 && i < arr.length) ? arr[i] : null;
     }
 
     closeAt(_index, isBackTest, ticker) {
         if (!isBackTest && ticker != null) return ticker;
-        return this.valueAt(this.kline.c, this.offsets.close, _index, isBackTest);
+        return super.closeAt(_index, isBackTest);
     }
 
     detectRegime(adxEntry) {
@@ -131,11 +116,11 @@ class Regime extends Strategy {
     }
 
     async run(_index = 0, isBackTest = false, ticker = null) {
-        let adxEntry = this.valueAt(this.adx, this.offsets.adx, _index, isBackTest);
-        let st = this.valueAt(this.superTrend, this.offsets.superTrend, _index, isBackTest);
-        let rsi = this.valueAt(this.rsi, this.offsets.rsi, _index, isBackTest);
-        let atrValue = this.valueAt(this.atr, this.offsets.atr, _index, isBackTest);
-        let boll = this.valueAt(this.bollinger, this.offsets.bollinger, _index, isBackTest);
+        let adxEntry = this.valueAt(this.adx, _index, isBackTest);
+        let st = this.valueAt(this.superTrend, _index, isBackTest);
+        let rsi = this.valueAt(this.rsi, _index, isBackTest);
+        let atrValue = this.valueAt(this.atr, _index, isBackTest);
+        let boll = this.valueAt(this.bollinger, _index, isBackTest);
         let price = this.closeAt(_index, isBackTest, ticker);
 
         // warm-up / data guard: hold until every aligned indicator has a value
@@ -154,7 +139,7 @@ class Regime extends Strategy {
             if (this.barsSinceExit < this.minBarsBetweenTrades) {
                 return this.getStrategyResult(this.state, {reason: 'cooldown', regime: this.regime});
             }
-            let prevSt = (isBackTest && _index > 0) ? this.valueAt(this.superTrend, this.offsets.superTrend, _index - 1, isBackTest)
+            let prevSt = (isBackTest && _index > 0) ? this.valueAt(this.superTrend, _index - 1, isBackTest)
                                                     : (this.superTrend.length > 1 ? this.superTrend[this.superTrend.length - 2] : null);
             return this.evaluateEntry(price, adxEntry, st, rsi, atrValue, boll, prevSt);
         }

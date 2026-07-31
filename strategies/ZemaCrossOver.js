@@ -96,9 +96,12 @@ class ZemaCrossOver extends Strategy{
      * @return {Promise<{custom: {}, context: null, state, timestamp: number}>}
      */
     async run(_index=0, isBackTest=false, ticker=null){
-        let currPrice = this.kline.o[isBackTest ? _index : this.kline.o.length-1];
-        let currSlowZema = this.zemaSlow[isBackTest ? _index : this.zemaSlow.length-1];
-        let currFastZema = this.zemaFast[isBackTest ? _index : this.zemaFast.length-1];
+        let currPrice = this.closeAt(_index, isBackTest);
+        let currSlowZema = this.valueAt(this.zemaSlow, _index, isBackTest);
+        let currFastZema = this.valueAt(this.zemaFast, _index, isBackTest);
+        if(currPrice == null || currSlowZema == null || currFastZema == null){
+            return this.getStrategyResult(this.state, {reason: 'warmup'});
+        }
         
 
         if(this.state === this.states.STATE_ENTER_LONG || this.state === this.states.STATE_ENTER_SHORT){

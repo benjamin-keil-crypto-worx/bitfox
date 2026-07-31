@@ -73,9 +73,16 @@ class Phoenix extends Strategy {
         return this;
     }
 
-    getCurrentValue(arr, isBackTest, index, fallback){
-        if(!arr || arr.length === 0) return fallback || 0;
-        return arr[isBackTest ? index : arr.length - 1];
+    /**
+     * Aligned read: `back` bars before the candle at `_index` (0 = current).
+     * Uses Strategy.valueAt so warm-up differences between indicator arrays
+     * are respected — raw `arr[_index]` reads values stale by the warm-up gap.
+     */
+    at(arr, _index, isBackTest, back = 0){
+        if(!arr || arr.length === 0) return null;
+        if(isBackTest) return this.valueAt(arr, _index - back, true);
+        let i = arr.length - 1 - back;
+        return i >= 0 ? arr[i] : null;
     }
 
     async run(_index=0, isBackTest=false, ticker=null){
@@ -91,8 +98,8 @@ class Phoenix extends Strategy {
 
         if(this.inPosition && [this.states.STATE_AWAIT_TAKE_PROFIT, this.states.STATE_PENDING].includes(this.state)){
             this.barsSinceEntry++;
-            let currentPrice = this.getApproximateCurrentPrice(isBackTest, _index);
-            let currentATR = this.getCurrentValue(this.atr, isBackTest, _index, this.entryATR);
+            let currentPrice = this.closeAt(_index, isBackTest);
+            let currentATR = this.at(this.atr, _index, isBackTest) ?? this.entryATR;
 
             let exitState = this.evaluateExit(currentPrice, currentATR);
             if(exitState){
@@ -108,24 +115,19 @@ class Phoenix extends Strategy {
         }
 
         if(this.state === this.states.STATE_PENDING){
-            let data = this.getIndicator();
-            let dataLen = data ? data.length : 0;
-            let idx = isBackTest ? _index : dataLen - 1;
+            let currentPrice = this.closeAt(_index, isBackTest);
+            let curRSI = this.at(this.rsi, _index, isBackTest);
+            let curATR = this.at(this.atr, _index, isBackTest);
+            let curMacd = this.at(this.macd, _index, isBackTest);
 
-            let currentPrice = this.getApproximateCurrentPrice(isBackTest, _index);
-            let curRSI = this.getCurrentValue(this.rsi, isBackTest, idx);
-            let curATR = this.getCurrentValue(this.atr, isBackTest, idx);
-            let curMacd = this.macd && this.macd.length > 0 ? this.macd[isBackTest ? idx : this.macd.length - 1] : null;
+            let curEMA20 = this.at(this.ema20, _index, isBackTest);
+            let curEMA50 = this.at(this.ema50, _index, isBackTest);
+            let curEMA100 = this.at(this.ema100, _index, isBackTest);
+            let curEMA200 = this.at(this.ema200, _index, isBackTest);
 
-            let curEMA20 = this.getCurrentValue(this.ema20, isBackTest, idx);
-            let curEMA50 = this.getCurrentValue(this.ema50, isBackTest, idx);
-            let curEMA100 = this.getCurrentValue(this.ema100, isBackTest, idx);
-            let curEMA200 = this.getCurrentValue(this.ema200, isBackTest, idx);
-
-            let prevIdx = Math.max(0, idx - 1);
-            let prevEMA20 = this.getCurrentValue(this.ema20, isBackTest, prevIdx);
-            let prevEMA50 = this.getCurrentValue(this.ema50, isBackTest, prevIdx);
-            let prevRSI = this.getCurrentValue(this.rsi, isBackTest, prevIdx);
+            let prevEMA20 = this.at(this.ema20, _index, isBackTest, 1);
+            let prevEMA50 = this.at(this.ema50, _index, isBackTest, 1);
+            let prevRSI = this.at(this.rsi, _index, isBackTest, 1);
 
             this.barsSinceLastTrade++;
 
@@ -187,7 +189,8 @@ class Phoenix extends Strategy {
             confidence: 0
         };
 
-        if(!price || !rsi || !atr || atr === 0 || !ema20 || !ema50 || !ema200){
+        if(!price || !rsi || !atr || atr === 0 || !ema20 || !ema50 || !ema200
+            || prevEMA20 == null || prevEMA50 == null || prevRSI == null){
             return result;
         }
 

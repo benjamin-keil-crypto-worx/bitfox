@@ -112,11 +112,14 @@ class EmaTrend extends Strategy{
      * @return {Promise<{custom: {}, context: null, state, timestamp: number}>}
      */
     async run(_index=0, isBackTest=false, ticker=null){
-        let currPrice = this.kline.o[isBackTest ? _index : this.kline.o.length-1];
-        let currSlowEma = this.emaSlow[isBackTest ? _index : this.emaSlow.length-1];
-        let currFastEma = this.emaFast[isBackTest ? _index : this.emaFast.length-1];
-        let currRsi = this.RSI[isBackTest ? _index : this.RSI.length - 1];
-        let currATR  = this.atr[isBackTest ? _index : this.atr.length - 1];
+        let currPrice = this.closeAt(_index, isBackTest);
+        let currSlowEma = this.valueAt(this.emaSlow, _index, isBackTest);
+        let currFastEma = this.valueAt(this.emaFast, _index, isBackTest);
+        let currRsi = this.valueAt(this.RSI, _index, isBackTest);
+        let currATR  = this.valueAt(this.atr, _index, isBackTest);
+        if(currPrice == null || currSlowEma == null || currFastEma == null || currRsi == null || currATR == null){
+            return this.getStrategyResult(this.state, {reason: 'warmup'});
+        }
         this.getTrendDirection(currSlowEma,currFastEma)
         if(this.state === this.states.STATE_ENTER_LONG || this.state === this.states.STATE_ENTER_SHORT){
             this.state = this.states.STATE_AWAIT_ORDER_FILLED;

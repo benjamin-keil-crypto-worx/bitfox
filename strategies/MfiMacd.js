@@ -103,8 +103,11 @@ class MfiMacd extends Strategy {
             // already available in your Strategy
             let data = this.getIndicator();
 
-            let currentIndicatorDataOne = this.mfi[isBackTest ? _index : data.length - 1];
-            let currentIndicatorDataTwo = this.macd[isBackTest ? _index : data.length - 1];
+            let currentIndicatorDataOne = this.valueAt(this.mfi, _index, isBackTest);
+            let currentIndicatorDataTwo = this.valueAt(this.macd, _index, isBackTest);
+            if(currentIndicatorDataOne == null || currentIndicatorDataTwo == null){
+                return this.getStrategyResult(this.state, {reason: 'warmup'});
+            }
 
             // This is same as above but this time we are calling a method in the super class to provide the current approximate price
             let currentPrice = this.getApproximateCurrentPrice(isBackTest,_index);

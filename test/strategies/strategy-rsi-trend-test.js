@@ -22,8 +22,8 @@ describe( "Test RSI Trend ", () => {
        chai.assert.equal(strategy.getState(),State.STATE_PENDING)
     } );
     it( "It should change State to short", () => {
-
-        strategy.run(470,true)
+        // index of the first overbought-above-MA candle with correctly aligned indicators (GHBF-34)
+        strategy.run(71,true)
         chai.assert.equal(strategy.getState(),State.STATE_ENTER_SHORT)
     } );
     it( "It should change State to STATE_AWAIT_ORDER_FILLED", () => {
@@ -55,7 +55,8 @@ describe( "Test RSI Trend ", () => {
         chai.assert.equal(strategy.getState(),State.STATE_PENDING)
     } );
     it( "It should change State to STATE_ENTER_LONG", () => {
-        strategy.run(286,true)
+        // index of the first oversold-below-MA candle with correctly aligned indicators (GHBF-34)
+        strategy.run(271,true)
         chai.assert.equal(strategy.getState(),State.STATE_ENTER_LONG) ;
     } );
 } );
