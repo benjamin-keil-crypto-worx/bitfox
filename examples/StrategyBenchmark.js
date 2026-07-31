@@ -28,7 +28,7 @@ let amount = parseFloat(process.argv[4]) || 1000;
 async function runStrategy(strategyName, StrategyClass) {
     try {
         let engine = builder()
-            .requiredCandles(500)
+            .requiredCandles(200)
             .sidePreference("biDirectional")
             .backtest(true)
             .pollRate(100)

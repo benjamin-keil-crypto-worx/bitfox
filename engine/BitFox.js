@@ -1050,7 +1050,7 @@ class BitFox extends Service {
         let options = {
             exchangeName: this.params.exchangeName,
             symbol: this.symbol,
-            requiredCandles: 200,
+            requiredCandles: this.params.requiredCandles || 200,
             pollRate: this.params.pollRate || 1000,
             timeframe: this.timeframe,
             verbose: true
