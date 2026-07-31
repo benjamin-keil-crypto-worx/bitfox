@@ -49,3 +49,8 @@ Thumbs.db
 *.mov
 *.wmv
 
+.env
+logs/
+*.log
+# Claude Code machine-local settings
+.claude/settings.local.json

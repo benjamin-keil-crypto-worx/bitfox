@@ -64,10 +64,7 @@ class ProcessManager{
      * @returns {ProcessManager} - The Process Manager Instance
      */
     setProcessSchedule( timeFrame ){
-        if(SCHEDULES.hasOwnProperty(timeFrame)){
-            this.schedule = SCHEDULES["5m"];
-        }
-        this.schedule =  SCHEDULES[timeFrame];
+        this.schedule = SCHEDULES[timeFrame] || null;
         return this;
     }
 

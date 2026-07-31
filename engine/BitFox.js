@@ -10,6 +10,7 @@ const {DataLoaderBuilder} = require("./DataLoader");
 const {EventHandler} = require("../lib/events/EventHandler");
 const {Strategy} = require("../strategies/Strategy");
 const {SuperTrend} = require("../strategies/SuperTrend");
+const {SuperTrendFull} = require("../strategies/SuperTrendFull");
 const {RSITrend} = require("../strategies/RSITrend");
 const {EmaTrend} = require("../strategies/EmaTrend");
 const {SmartAccumulate} = require("../strategies/SmartAccumulate");
@@ -27,6 +28,7 @@ const {Server} = require("../server/server");
 const {Client} = require("../server/client");
 
 const {MfiMacd} = require("../strategies/MfiMacd");
+const {Phoenix} = require("../strategies/Phoenix");
 const utils = require("../lib/utility/util");
 const {Errors} = require("../errors/Errors");
 
@@ -634,6 +636,7 @@ class EngineBuilder {
     slackChannel(channel){
         this.validateTypes(channel, "channel", "string");
         this.args.slackChannel = channel;
+        return this;
     }
 
     ntfyAddress(ntfyAddress){
@@ -643,7 +646,7 @@ class EngineBuilder {
 
     // Alerting & Notification Ntfy topic to publish the Notification to
     ntfyTopic(ntfyTopic){
-        this.validateTypes(ntfyAddress, "ntfyTopic", "ntfyTopic");
+        this.validateTypes(ntfyTopic, "ntfyTopic", "string");
         this.args.ntfyTopic = ntfyTopic;
     }
 
@@ -741,6 +744,7 @@ class BitFox extends Service {
         this.currentSide = null;
         this.timeframe = args.timeframe || '4h';
         this.amount = args.amount;
+        this.profitPct = args.profitPct;
         this.takeProfitPct = args.profitPct;
         this.stopLossTarget = args.stopLossPct || 0;
         this.useLimitOrder = args.useLimitOrder || false;
@@ -1008,6 +1012,7 @@ class BitFox extends Service {
             }
                 break;
             case State.STATE_TAKE_PROFIT: {
+                await this.takeProfit(me);
                 me.foxStrategy.setState(State.STATE_PENDING);
             }
                 break;
@@ -1139,7 +1144,7 @@ class BitFox extends Service {
     async stopLossLong(ticker, me, oB) {
         me.amount = me.lastAmount;
         me.funds = (ticker.last * me.lastAmount)
-        let order = (me.life) ? await me.marketSellOrder(me.symbol, me.amount, {}) :  await me.mockExchange.marketSellOrder((me.symbol, me.amount, {}));
+        let order = (me.life) ? await me.marketSellOrder(me.symbol, me.amount, {}) :  await me.mockExchange.marketSellOrder(me.symbol, me.amount, {});
         me.eventHandler.fireEvent("onStopLossTriggered", {timestamp:new Date().getTime(), entryOrder:me.buyOrder, exitOrder:order});
     }
 
@@ -1154,7 +1159,7 @@ class BitFox extends Service {
         me.funds = ticker.last * me.lastAmount;
         me.amount = me.funds / ticker.last;
         me.lastAmount = me.amount;
-        let order = (me.life) ?  await me.marketBuyOrder(me.symbol, me.amount, ticker.last) : await me.mockExchange.marketBuyOrder((me.symbol, me.amount, ticker.last));
+        let order = (me.life) ?  await me.marketBuyOrder(me.symbol, me.amount, ticker.last) : await me.mockExchange.marketBuyOrder(me.symbol, me.amount, ticker.last);
         me.eventHandler.fireEvent("onStopLossTriggered", {timestamp:new Date().getTime(), entryOrder:me.sellOrder, exitOrder:order});
 
     }
@@ -1169,7 +1174,7 @@ class BitFox extends Service {
     async takeProfitLong(ticker, me, oB) {
         me.amount = me.lastAmount;
         me.funds = ticker.last * me.amount
-        let order = (me.life) ?  await  me.marketSellOrder(me.symbol, me.amount, {}) : await me.mockExchange.marketSellOrder((me.symbol, me.amount, {}));
+        let order = (me.life) ?  await  me.marketSellOrder(me.symbol, me.amount, {}) : await me.mockExchange.marketSellOrder(me.symbol, me.amount, {});
         me.eventHandler.fireEvent("onTradeComplete", {timestamp:new Date().getTime(), entryOrder:me.buyOrder, exitOrder:order});
     }
 
@@ -1184,7 +1189,7 @@ class BitFox extends Service {
         me.funds = me.lastShortEntry * me.lastAmount;;
         me.amount = me.funds / ticker.last;
         me.lastAmount = me.amount;
-        let order = (me.life) ?  await me.marketBuyOrder(me.symbol, me.amount, ticker.last) : await me.mockExchange.marketBuyOrder((me.symbol, me.amount, ticker.last));
+        let order = (me.life) ?  await me.marketBuyOrder(me.symbol, me.amount, ticker.last) : await me.mockExchange.marketBuyOrder(me.symbol, me.amount, ticker.last);
         me.eventHandler.fireEvent("onTradeComplete", {timestamp:new Date().getTime(), entryOrder:me.sellOrder, exitOrder:order});
     }
 
@@ -1195,7 +1200,7 @@ class BitFox extends Service {
      */
     async enterShort(me) {
         let oB = await me.fetchOrderBook(me.symbol, 20, {})
-        const askPrice = oB.asks[2][0];
+        let askPrice = oB.asks[0][0];
         if( me.useLimitOrder ) {
           me.sellOrder = await me.limitSellOrder(me.symbol, me.amount, askPrice, {})
         }else {
@@ -1205,7 +1210,7 @@ class BitFox extends Service {
         me.lastAmount = me.amount;
         me.currentSide = 'sell';
         me.foxStrategy.setState(State.STATE_AWAIT_ORDER_FILLED);
-        me.eventHandler.fireEvent("onOrderPlaced", {timestamp:new Date().getTime(), order:me.buyOrder});
+        me.eventHandler.fireEvent("onOrderPlaced", {timestamp:new Date().getTime(), order:me.sellOrder});
     }
 
     /**
@@ -1215,10 +1220,9 @@ class BitFox extends Service {
      */
     async enterLong(me) {
         let oB = await me.fetchOrderBook(me.symbol, 20, {})
-        let bidPrice = oB.bids[1][0];
+        let bidPrice = oB.bids[0][0];
         
         if( me.useLimitOrder ) {
-            const bidPrice = oB.bids[2][0];
             me.buyOrder = await me.limitBuyOrder(me.symbol, me.amount, bidPrice, {})
         } else {
               me.buyOrder = await  me.marketBuyOrder(me.symbol, me.amount, bidPrice)
@@ -1291,6 +1295,7 @@ module.exports = {
     ProcessManager:ProcessManager,
     Strategy:Strategy,
     SuperTrend:SuperTrend,
+    SuperTrendFull:SuperTrendFull,
     RSITrend:RSITrend,
     MfiMacd:MfiMacd,
     EmaTrend:EmaTrend,
@@ -1302,6 +1307,7 @@ module.exports = {
     ZemaCrossOver:ZemaCrossOver,
     MultiDivergence:MultiDivergence,
     DynamicGrid:DynamicGrid,
+    Phoenix:Phoenix,
     utils:utils,
     getModels:getModels,
     DataLoaderBuilder:DataLoaderBuilder,

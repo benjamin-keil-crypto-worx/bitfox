@@ -39,7 +39,7 @@ class Alert {
             case "ntfy":{this.ntfy =  Ntfy.factory(this.args)} break;
             case "email":{this.email = Email.factory() }break;
             case "slack":{this.slack =  Slack.factory(this.args)}break;
-            case "telegram":{global.tb = (global.tb === undefined) ? Telegram.factory(this.args) : global.tb; this.telegramBot = global.tb}break;
+            case "telegram":{this.telegramBot = Telegram.factory(this.args)}break;
         }
     }
 
