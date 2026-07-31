@@ -14,6 +14,7 @@
   "scripts": {
     "start": "node trade-live.js",
     "test": "mocha --timeout 5000 --recursive",
+    "test:ci": "mocha --timeout 5000 --recursive --ignore test/engine/bitfox-test.js --ignore test/service/mock-service-test.js",
     "test-verbose": "mocha --timeout 5000 --recursive  --reporter doc > test-results/report.html",
     "benchmark": "node examples/StrategyBenchmark.js",
     "postinstall": "node postinstall.js",
