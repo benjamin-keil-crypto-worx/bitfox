@@ -11,16 +11,39 @@ class TelegramSession {
      *
      * @return {TelegramSession}
      */
-    static factory(){ return new TelegramSession()}
-    constructor(){
+    static factory(allowedChatIds = []){ return new TelegramSession(allowedChatIds)}
+
+    /**
+     * @param allowedChatIds {Array<String>} when non-empty, only these chat ids may register.
+     *                       Empty (the default) preserves the previous open behaviour.
+     */
+    constructor(allowedChatIds = []){
         this.sessions = [];
+        this.allowedChatIds = (allowedChatIds || []).map(String).filter(Boolean);
+    }
+
+    /**
+     * @param chatId {String} The Chat Id to test against the allowlist
+     * @return {Boolean} whether this chat is permitted to register and receive notifications
+     */
+    isAllowed(chatId){
+        return this.allowedChatIds.length === 0 || this.allowedChatIds.includes(String(chatId));
     }
 
     /**
      *
      * @param chatId {String} The Chat Id to add to the session instance
+     * @return {Boolean} true when the session was registered, false when the allowlist rejected it
      */
-    setSession(chatId) { this.getSession(chatId) ===undefined || this.getSession(chatId) === null ? this.sessions.push({chatId: chatId}) : null};
+    setSession(chatId) {
+        // Previously ANY chat that sent /start registered itself and began receiving
+        // notifications. With an allowlist configured, registration is now refused.
+        if (!this.isAllowed(chatId)) return false;
+        if (this.getSession(chatId) === undefined || this.getSession(chatId) === null) {
+            this.sessions.push({chatId: chatId});
+        }
+        return true;
+    };
 
     /**
      *

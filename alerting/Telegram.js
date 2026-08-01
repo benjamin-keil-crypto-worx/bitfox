@@ -42,7 +42,8 @@ class Telegram{
      */
     constructor(args) {
         this.bot = new TelegramBot(args.token, {polling: true});
-        this.session = TelegramSession.factory();
+        // allowedChatIds gates self-registration; empty/absent keeps the previous open behaviour
+        this.session = TelegramSession.factory(args.allowedChatIds || []);
         if(args.chatId){
             this.session.setSession(args.chatId);
         }
@@ -58,7 +59,12 @@ class Telegram{
             console.log(error)
         });
         this.bot.onText(/\/start/, async (msg, match) => {
-             this.session.setSession(msg.chat.id);
+             let registered = this.session.setSession(msg.chat.id);
+             if (!registered) {
+                 console.warn(`[Telegram] refused registration for chat ${msg.chat.id} — not in allowlist`);
+                 await me.bot.sendMessage(msg.chat.id, `This bot is restricted. Ask the operator to add your chat id (${msg.chat.id}) to the allowlist.`);
+                 return;
+             }
              await me.bot.sendMessage(msg.chat.id, `Welcome to BotVox Notifications\nHere is your Chat ID:\n${msg.chat.id}\nYou are all setup to receive BotVox Notifications!`);
         });
     }
