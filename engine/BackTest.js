@@ -106,6 +106,12 @@ class BackTest {
         this.makerFee = args.makerFee ?? 0.001;
         this.takerFee = args.takerFee ?? 0.001;
         this.slippage = args.slippage ?? 0.0005;
+        // Maker-exit modelling (GHBF-42), opt-in and OFF by default so every pre-existing
+        // result stays bit-identical. When enabled, an engine-managed take-profit is treated
+        // as what it actually is — a resting limit order at a known price — so it pays
+        // makerFee and no slippage. Stop-losses and strategy-signalled exits are market
+        // orders and keep paying takerFee + slippage regardless of this flag.
+        this.makerExits = args.makerExits ?? false;
         // risk-based sizing: only active when a strategy supplies a stopPrice on its entry
         // result (and a riskPct is available). Otherwise sizing stays fixed-notional as before.
         this.riskPct = args.riskPct ?? null;
@@ -178,7 +184,9 @@ class BackTest {
                     let exitValue = trade.exitOrder.amount * trade.exitOrder.price;
                     let isLong = trade.entryOrder.side === 'buy';
                     let rawPnl = isLong ? (exitValue - entryValue) : (entryValue - exitValue);
-                    let pnlAfterFees = rawPnl - (entryValue * this.takerFee) - (exitValue * this.takerFee);
+                    // entries are always taker; the exit leg is maker only for limit-filled take-profits
+                    let exitFee = trade.exitWasMaker ? this.makerFee : this.takerFee;
+                    let pnlAfterFees = rawPnl - (entryValue * this.takerFee) - (exitValue * exitFee);
                     let tradeReturn = pnlAfterFees / entryValue;
 
                     returns.push(tradeReturn);
@@ -285,11 +293,20 @@ class BackTest {
         console.log();
         Log.yellow(`Stop Losses Triggered: ${this.stopOrderCount}`);
         Log.yellow(`Avg Quote Profit: ${avgQuoteProfit.length > 0 ? util.average(avgQuoteProfit).toFixed(8) : 'N/A'}`);
-        Log.yellow(`Avg Bars Per Trade: ${util.average(this.barAvgCount).toFixed(1)}`);
+        // guarded like avgQuoteProfit above: a run where no trade ever closes leaves this empty,
+        // and util.average([]) throws. Reachable whenever a strategy holds to the end of the data,
+        // and routinely so under makerExits where an unfilled limit leaves the position open.
+        Log.yellow(`Avg Bars Per Trade: ${this.barAvgCount.length > 0 ? util.average(this.barAvgCount).toFixed(1) : 'N/A'}`);
         Log.yellow(`Max Bars: ${this.maxBarCount}  Min Bars: ${this.minBarCount}`);
         console.log();
         Log.yellow(`Fee Model: Maker ${(this.makerFee*100).toFixed(3)}% / Taker ${(this.takerFee*100).toFixed(3)}%`);
-        Log.yellow(`Slippage (applied to entry and exit fills): ${(this.slippage*100).toFixed(3)}%`);
+        if (this.makerExits) {
+            Log.yellow(`Maker exits: ON — limit take-profits require a strict trade-through, pay makerFee and no slippage`);
+            Log.yellow(`Slippage (entries, stop-losses and signal exits): ${(this.slippage*100).toFixed(3)}%`);
+        } else {
+            Log.yellow(`Maker exits: OFF — every leg charges takerFee (makerFee above is unused)`);
+            Log.yellow(`Slippage (applied to entry and exit fills): ${(this.slippage*100).toFixed(3)}%`);
+        }
         Log.yellow(`Fill Model: TP at target, SL at stop (gaps fill at open), signal exits at close; same-bar TP+SL resolves as stop-loss`);
         console.log();
         Log.yellow(`================================================`);
@@ -368,13 +385,17 @@ class BackTest {
     handleStateAwaitShortResult(currentOrder, currentCandles) {
         let pT = this.strategy.calculateShortProfitTarget(currentOrder.price, this.profitTarget)
         let sT = (this.stopLossTarget>0) ? this.strategy.calculateShortStopTarget(currentOrder.price,this.stopLossTarget) : 0;
-        let isinProfitRange = util.priceInShortProfitRange(currentCandles[3], pT)
+        // see handleStateAwaitLongResult: makerExits demands a strict trade-through (low < pT)
+        let isinProfitRange = this.makerExits
+            ? currentCandles[3] < pT
+            : util.priceInShortProfitRange(currentCandles[3], pT);
         let isInStopLossRange = (sT > 0) ? util.priceInShortStopRange(currentCandles[2], sT) : false;
         // stop-loss first: a bar that touches both target and stop resolves as a loss
         if (isInStopLossRange) {
             this.applyStopLoss(currentCandles, Math.max(currentCandles[1], sT));
         } else if (isinProfitRange) {
-            this.completeTrade(currentCandles, Math.min(currentCandles[1], pT));
+            // gap-through already handled: a bar opening beyond the target fills at the open
+            this.completeTrade(currentCandles, Math.min(currentCandles[1], pT), this.makerExits);
         }
         this.strategy.setState((isInStopLossRange) ? State.STATE_STOP_LOSS_TRIGGERED : (isinProfitRange) ? State.STATE_TAKE_PROFIT : State.STATE_AWAIT_TAKE_PROFIT)
     }
@@ -413,13 +434,20 @@ class BackTest {
     handleStateAwaitLongResult(currentOrder, currentCandles) {
         let pT = this.strategy.calculateLongProfitTarget(currentOrder.price, this.profitTarget)
         let sT = (this.stopLossTarget>0) ? this.strategy.calculateLongStopTarget(currentOrder.price,this.stopLossTarget) : 0;
-        let isinProfitRange = util.priceInLongProfitRange(currentCandles[2], pT);
+        // With makerExits the take-profit is a resting limit, so the bar must trade THROUGH
+        // the level (high > pT), not merely tag it. A touch tells us nothing about whether
+        // the resting order was actually consumed, and assuming it was is how optimistic
+        // fill models are born (see GHBF-26).
+        let isinProfitRange = this.makerExits
+            ? currentCandles[2] > pT
+            : util.priceInLongProfitRange(currentCandles[2], pT);
         let isInStopLossRange = (sT > 0) ? util.priceInLongStopRange(currentCandles[3], sT) : false;
         // stop-loss first: a bar that touches both target and stop resolves as a loss
         if (isInStopLossRange) {
             this.applyStopLoss(currentCandles, Math.min(currentCandles[1], sT));
         } else if (isinProfitRange) {
-            this.completeTrade(currentCandles, Math.max(currentCandles[1], pT));
+            // gap-through already handled: a bar opening beyond the target fills at the open
+            this.completeTrade(currentCandles, Math.max(currentCandles[1], pT), this.makerExits);
         }
         this.strategy.setState((isInStopLossRange) ? State.STATE_STOP_LOSS_TRIGGERED : (isinProfitRange) ? State.STATE_TAKE_PROFIT : State.STATE_AWAIT_TAKE_PROFIT)
     }
@@ -471,7 +499,9 @@ class BackTest {
         let exitValue = trade.exitOrder.amount * trade.exitOrder.price;
         let isLong = trade.entryOrder.side === 'buy';
         let rawPnl = isLong ? (exitValue - entryValue) : (entryValue - exitValue);
-        let pnlAfterFees = rawPnl - (entryValue * this.takerFee) - (exitValue * this.takerFee);
+        // entries are always taker; the exit leg is maker only for limit-filled take-profits
+        let exitFee = trade.exitWasMaker ? this.makerFee : this.takerFee;
+        let pnlAfterFees = rawPnl - (entryValue * this.takerFee) - (exitValue * exitFee);
         this.funds += pnlAfterFees;
     }
 
@@ -541,12 +571,18 @@ class BackTest {
     /**
      *
      * @param currentCandles {Array}  open, high, low, close and volume values
+     * @param isMakerExit {Boolean} true when the exit was a resting limit take-profit that the bar traded
+     *                    through — such a fill pays makerFee and no slippage. Defaults to false, so stop
+     *                    losses and strategy-signalled exits keep market-order accounting.
      * @returns {void}  this method completes ongoing trades i.e. it creates a exit order. It places a sell order when the entry was a long trade
      *                  and buy order when the entry was a sell order
      */
-    completeTrade(currentCandles, fillPrice) {
+    completeTrade(currentCandles, fillPrice, isMakerExit = false) {
         let currentTrade = this.tradeHistory[this.tradeHistory.length - 1];
         currentTrade.totalBars = this.barCount;
+        // recorded on the trade so both PnL paths (live adjustUnrealizedBalance and the
+        // JSON round-trip in backTest) charge the same exit fee
+        currentTrade.exitWasMaker = isMakerExit;
         this.barAvgCount.push(this.barCount)
         if (this.tradeDirection === 'long') {
             currentTrade.maxDrawDown = this.maxLongDrawDown;
@@ -569,8 +605,11 @@ class BackTest {
      * @returns {void}  this method executes a fictional buy order
      */
     executeBuyOrder(currentCandles, currentTrade, fillPrice) {
-        // buy-to-cover pays slippage on top of the fill; default fill is the bar close (signal exits)
-        let exitPrice = (fillPrice ?? currentCandles[4]) * (1 + this.slippage);
+        // buy-to-cover pays slippage on top of the fill; default fill is the bar close (signal exits).
+        // A maker exit is a resting limit that filled at its own price — no slippage by definition.
+        let exitPrice = currentTrade.exitWasMaker
+            ? (fillPrice ?? currentCandles[4])
+            : (fillPrice ?? currentCandles[4]) * (1 + this.slippage);
         let exitAmount = this.args.amount;
         currentTrade.exitOrder = this.mockService.marketBuyOrder(this.args.symbol, exitAmount, exitPrice);
         this.adjustUnrealizedBalance(currentCandles);
@@ -580,8 +619,11 @@ class BackTest {
     }
 
     executeSellOrder(currentTrade, currentCandles, fillPrice) {
-        // sell fills lose slippage; default fill is the bar close (signal exits)
-        let exitPrice = (fillPrice ?? currentCandles[4]) * (1 - this.slippage);
+        // sell fills lose slippage; default fill is the bar close (signal exits).
+        // A maker exit is a resting limit that filled at its own price — no slippage by definition.
+        let exitPrice = currentTrade.exitWasMaker
+            ? (fillPrice ?? currentCandles[4])
+            : (fillPrice ?? currentCandles[4]) * (1 - this.slippage);
         let exitAmount = this.args.amount;
         currentTrade.exitOrder = this.mockService.marketSellOrder(this.args.symbol, exitAmount, exitPrice);
         this.adjustUnrealizedBalance(currentCandles);
