@@ -88,6 +88,9 @@ class BacktestRunner {
             sidePreference: 'biDirectional',
             public: true, exchangeName: 'bybit',
             takerFee: this.costs.taker, makerFee: this.costs.maker, slippage: this.costs.slippage,
+            // silence the engine: a single query otherwise emits hundreds of trade lines,
+            // which is noise in a bot's server log and corrupts the MCP stdio protocol
+            verbose: false,
         };
         let strategy = resolved.cls.init(args);
         // BackTest writes trade history to ~/bitfox/<context>-<date>.json with no symbol or

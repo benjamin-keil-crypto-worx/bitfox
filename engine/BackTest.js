@@ -2,6 +2,9 @@ const {State} = require("../lib/states/States");
 const util = require("../lib/utility/util");
 const {Log} = require("../lib/utility/Log");
 
+/** No-op stand-in for Log, used when a backtest is run with `verbose: false`. */
+const SILENT_LOG = new Proxy({}, {get: () => () => {}});
+
 const Mock = require("../service/MockService").Service;
 const fs = require("fs");
 const os = require("os");
@@ -112,6 +115,13 @@ class BackTest {
         // makerFee and no slippage. Stop-losses and strategy-signalled exits are market
         // orders and keep paying takerFee + slippage regardless of this flag.
         this.makerExits = args.makerExits ?? false;
+        // Output control (GHBF-54). Defaults to TRUE so every existing example, the Docker
+        // deployment and trade-live.js keep their current output byte-for-byte. The
+        // signalling layer and MCP server pass false: a single query used to emit hundreds
+        // of trade lines, which is noise in a Telegram server log and — over MCP stdio,
+        // where stdout carries the protocol — a correctness hazard.
+        this.verbose = args.verbose ?? true;
+        this.log = this.verbose ? Log : SILENT_LOG;
         // risk-based sizing: only active when a strategy supplies a stopPrice on its entry
         // result (and a riskPct is available). Otherwise sizing stays fixed-notional as before.
         this.riskPct = args.riskPct ?? null;
@@ -126,6 +136,9 @@ class BackTest {
         this.outDir = null;
         this.createOutputDirectory();
     }
+
+    /** Spacing in the human-readable report; suppressed with the rest of the output when silent. */
+    blankLine(){ if (this.verbose) console.log(); }
 
     createOutputDirectory(){
         this.outDir= `${os.homedir()}/bitfox`;
@@ -167,7 +180,7 @@ class BackTest {
         }
 
         if(this.tradeHistory.length<=0){
-            Log.yellow("No trades were executed during the backtest period.");
+            this.log.yellow("No trades were executed during the backtest period.");
             return false;
         }
         let resultString = JSON.stringify(this.tradeHistory);
@@ -198,10 +211,10 @@ class BackTest {
                     avgQuoteProfit.push(approximatedQuoteProfit);
                     avgBaseProfit.push(approximatedBaseProfit);
 
-                    Log.trade(`Entry: ${trade.entryTimestamp} Exit: ${trade.exitTimeStamp}`);
-                    Log.log(`Side: ${isLong ? 'Long' : 'Short'} Entry: ${trade.entryOrder.price} Exit: ${trade.exitOrder.price}`);
+                    this.log.trade(`Entry: ${trade.entryTimestamp} Exit: ${trade.exitTimeStamp}`);
+                    this.log.log(`Side: ${isLong ? 'Long' : 'Short'} Entry: ${trade.entryOrder.price} Exit: ${trade.exitOrder.price}`);
                     if(trade.stopTriggered){
-                        Log.short(`Stop Triggered`);
+                        this.log.short(`Stop Triggered`);
                         this.stopOrderCount++;
                     }
                     // a win is net-positive PnL, independent of how the trade exited
@@ -210,9 +223,9 @@ class BackTest {
                     } else {
                         this.tradeLossCount++;
                     }
-                    Log.log(`Bars: ${trade.totalBars} PnL: ${pnlAfterFees.toFixed(8)} (${(tradeReturn*100).toFixed(2)}%)`);
-                    Log.log(`Max DD: ${trade.maxDrawDown}`);
-                    console.log();
+                    this.log.log(`Bars: ${trade.totalBars} PnL: ${pnlAfterFees.toFixed(8)} (${(tradeReturn*100).toFixed(2)}%)`);
+                    this.log.log(`Max DD: ${trade.maxDrawDown}`);
+                    this.blankLine();
                 }
             })
         }
@@ -275,41 +288,41 @@ class BackTest {
         };
 
         let contextName = (this.strategy.getContext() && this.strategy.getContext().context) || 'STRATEGY';
-        Log.yellow(`========== ${contextName.toUpperCase()} BACKTEST RESULTS ==========`);
-        console.log();
-        Log.yellow(`Total Trades: ${totalTrades}`);
-        Log.yellow(`Completed Trades: ${completedTrades}${openTrades > 0 ? `  (Open/never exited: ${openTrades})` : ''}`);
-        Log.yellow(`Wins: ${wins}  Losses: ${losses}`);
-        Log.yellow(`Win Rate: ${winRate.toFixed(2)}%`);
-        console.log();
-        Log.yellow(`Starting Capital: ${startingFunds.toFixed(4)}`);
-        Log.yellow(`Ending Capital: ${endingFunds.toFixed(4)}`);
-        Log.yellow(`Total Return: ${totalReturnPct.toFixed(2)}%`);
-        console.log();
-        Log.yellow(`Avg Return Per Trade: ${(avgReturn * 100).toFixed(2)}%`);
-        Log.yellow(`Profit Factor: ${profitFactor === Infinity ? '∞' : profitFactor.toFixed(2)}`);
-        Log.yellow(`Sharpe Ratio (annualized, √trades/yr): ${sharpeRatio.toFixed(2)}  (per-trade: ${sharpePerTrade.toFixed(3)}, ~${tradesPerYear.toFixed(0)} trades/yr)`);
-        Log.yellow(`Max Drawdown: ${(this.maxDrawdownPct * 100).toFixed(2)}%`);
-        console.log();
-        Log.yellow(`Stop Losses Triggered: ${this.stopOrderCount}`);
-        Log.yellow(`Avg Quote Profit: ${avgQuoteProfit.length > 0 ? util.average(avgQuoteProfit).toFixed(8) : 'N/A'}`);
+        this.log.yellow(`========== ${contextName.toUpperCase()} BACKTEST RESULTS ==========`);
+        this.blankLine();
+        this.log.yellow(`Total Trades: ${totalTrades}`);
+        this.log.yellow(`Completed Trades: ${completedTrades}${openTrades > 0 ? `  (Open/never exited: ${openTrades})` : ''}`);
+        this.log.yellow(`Wins: ${wins}  Losses: ${losses}`);
+        this.log.yellow(`Win Rate: ${winRate.toFixed(2)}%`);
+        this.blankLine();
+        this.log.yellow(`Starting Capital: ${startingFunds.toFixed(4)}`);
+        this.log.yellow(`Ending Capital: ${endingFunds.toFixed(4)}`);
+        this.log.yellow(`Total Return: ${totalReturnPct.toFixed(2)}%`);
+        this.blankLine();
+        this.log.yellow(`Avg Return Per Trade: ${(avgReturn * 100).toFixed(2)}%`);
+        this.log.yellow(`Profit Factor: ${profitFactor === Infinity ? '∞' : profitFactor.toFixed(2)}`);
+        this.log.yellow(`Sharpe Ratio (annualized, √trades/yr): ${sharpeRatio.toFixed(2)}  (per-trade: ${sharpePerTrade.toFixed(3)}, ~${tradesPerYear.toFixed(0)} trades/yr)`);
+        this.log.yellow(`Max Drawdown: ${(this.maxDrawdownPct * 100).toFixed(2)}%`);
+        this.blankLine();
+        this.log.yellow(`Stop Losses Triggered: ${this.stopOrderCount}`);
+        this.log.yellow(`Avg Quote Profit: ${avgQuoteProfit.length > 0 ? util.average(avgQuoteProfit).toFixed(8) : 'N/A'}`);
         // guarded like avgQuoteProfit above: a run where no trade ever closes leaves this empty,
         // and util.average([]) throws. Reachable whenever a strategy holds to the end of the data,
         // and routinely so under makerExits where an unfilled limit leaves the position open.
-        Log.yellow(`Avg Bars Per Trade: ${this.barAvgCount.length > 0 ? util.average(this.barAvgCount).toFixed(1) : 'N/A'}`);
-        Log.yellow(`Max Bars: ${this.maxBarCount}  Min Bars: ${this.minBarCount}`);
-        console.log();
-        Log.yellow(`Fee Model: Maker ${(this.makerFee*100).toFixed(3)}% / Taker ${(this.takerFee*100).toFixed(3)}%`);
+        this.log.yellow(`Avg Bars Per Trade: ${this.barAvgCount.length > 0 ? util.average(this.barAvgCount).toFixed(1) : 'N/A'}`);
+        this.log.yellow(`Max Bars: ${this.maxBarCount}  Min Bars: ${this.minBarCount}`);
+        this.blankLine();
+        this.log.yellow(`Fee Model: Maker ${(this.makerFee*100).toFixed(3)}% / Taker ${(this.takerFee*100).toFixed(3)}%`);
         if (this.makerExits) {
-            Log.yellow(`Maker exits: ON — limit take-profits require a strict trade-through, pay makerFee and no slippage`);
-            Log.yellow(`Slippage (entries, stop-losses and signal exits): ${(this.slippage*100).toFixed(3)}%`);
+            this.log.yellow(`Maker exits: ON — limit take-profits require a strict trade-through, pay makerFee and no slippage`);
+            this.log.yellow(`Slippage (entries, stop-losses and signal exits): ${(this.slippage*100).toFixed(3)}%`);
         } else {
-            Log.yellow(`Maker exits: OFF — every leg charges takerFee (makerFee above is unused)`);
-            Log.yellow(`Slippage (applied to entry and exit fills): ${(this.slippage*100).toFixed(3)}%`);
+            this.log.yellow(`Maker exits: OFF — every leg charges takerFee (makerFee above is unused)`);
+            this.log.yellow(`Slippage (applied to entry and exit fills): ${(this.slippage*100).toFixed(3)}%`);
         }
-        Log.yellow(`Fill Model: TP at target, SL at stop (gaps fill at open), signal exits at close; same-bar TP+SL resolves as stop-loss`);
-        console.log();
-        Log.yellow(`================================================`);
+        this.log.yellow(`Fill Model: TP at target, SL at stop (gaps fill at open), signal exits at close; same-bar TP+SL resolves as stop-loss`);
+        this.blankLine();
+        this.log.yellow(`================================================`);
     }
 
     /**

@@ -74,6 +74,11 @@ function build(opts) {
     if (!strategies || strategies.length === 0) {
         doc.push('_Not computed._');
     } else {
+        // The regime table above spans every horizon; these statistics do not. Saying so
+        // explicitly, because a reader can reasonably assume otherwise.
+        let tfs = [...new Set(strategies.map(s => s.timeframe))].join(', ');
+        doc.push(`Computed on the **${tfs}** timeframe only — the regime table above covers all horizons, these statistics do not.`);
+        doc.push('');
         for (const s of strategies) {
             doc.push(`### ${s.name} — ${s.timeframe}`);
             doc.push('');

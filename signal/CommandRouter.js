@@ -15,6 +15,14 @@ const COMMANDS = ['trend', 'momentum', 'levels', 'vol', 'signal', 'backtest', 'r
 const SYMBOL_ONLY = ['regime', 'snapshot'];
 
 /**
+ * Commands slow enough on a cold cache that silence reads as a broken bot. `/snapshot`
+ * loads three horizons and runs a backtest per strategy; tens of seconds is normal.
+ * The transport sends an acknowledgement first — the router stays transport-agnostic and
+ * only declares WHICH commands are slow.
+ */
+const SLOW_COMMANDS = ['snapshot', 'signal', 'regime'];
+
+/**
  * Class CommandRouter
  *
  * Parses and dispatches read-only analysis commands. Deliberately transport-agnostic —
@@ -39,6 +47,9 @@ class CommandRouter {
         this.runner = opts.runner || BacktestRunner.create(opts);
         this.store = opts.store || SnapshotStore.create(opts);
         this.horizons = opts.horizons || regimeEngine.DEFAULT_HORIZONS;
+        // cap the strategies benchmarked per /signal or /snapshot: on a cold cache each one
+        // is a backtest, and the sequential run can bump exchange rate limits
+        this.maxStrategiesPerQuery = opts.maxStrategiesPerQuery ?? 10;
         this.hits = new Map();
         // Each poll fetches 200 candles. Sized so /backtest gets a sample worth reporting
         // rather than a fast answer that means nothing — a PF on 12 trades is noise, and
@@ -207,7 +218,7 @@ class CommandRouter {
         let examined = 0, reliable = 0;
         try {
             let candles = await this.cache.get(symbol, timeframe, {pollRate: this.pollRates[timeframe], now});
-            for (const name of registry.names()) {
+            for (const name of registry.names().slice(0, this.maxStrategiesPerQuery)) {
                 try {
                     let trades = await this.runner.tradesFor(candles, symbol, timeframe, name);
                     if (!trades || trades.length === 0) continue;
@@ -237,7 +248,7 @@ class CommandRouter {
     async signal(candles, symbol, timeframe, now) {
         let a = Analysis.from(candles);
         let rows = [];
-        for (let name of registry.names()) {
+        for (let name of registry.names().slice(0, this.maxStrategiesPerQuery)) {
             let state = 'unavailable', pf = null, trades = null;
             try {
                 let {cls} = registry.resolve(name);
@@ -259,4 +270,4 @@ class CommandRouter {
     }
 }
 
-module.exports = {CommandRouter, COMMANDS};
+module.exports = {CommandRouter, COMMANDS, SLOW_COMMANDS};

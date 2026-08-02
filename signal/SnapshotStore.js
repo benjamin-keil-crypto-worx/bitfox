@@ -15,6 +15,9 @@ class SnapshotStore {
 
     constructor(opts = {}) {
         this.dir = opts.dir || path.join(os.homedir(), 'bitfox', 'snapshots');
+        // Snapshots are cheap to generate from BOTH surfaces (Telegram and MCP), so the
+        // directory grows without bound unless something prunes it. 0 disables pruning.
+        this.maxSnapshots = opts.maxSnapshots ?? 200;
     }
 
     ensureDir() {
@@ -44,7 +47,23 @@ class SnapshotStore {
         this.ensureDir();
         let file = path.join(this.dir, `${id}.md`);
         fs.writeFileSync(file, markdown, 'utf8');
+        this.prune();
         return file;
+    }
+
+    /**
+     * Drop the oldest snapshots beyond `maxSnapshots`.
+     * @return {Array<String>} ids removed
+     */
+    prune() {
+        if (!this.maxSnapshots || this.maxSnapshots <= 0) return [];
+        // list() is already newest-first by mtime — reuse that rather than a second rule
+        let all = this.list(Number.MAX_SAFE_INTEGER);
+        let removed = [];
+        for (const entry of all.slice(this.maxSnapshots)) {
+            try { fs.unlinkSync(entry.path); removed.push(entry.id); } catch (e) { /* already gone */ }
+        }
+        return removed;
     }
 
     /** @return {String|null} */

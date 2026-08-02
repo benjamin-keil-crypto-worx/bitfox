@@ -43,7 +43,9 @@ const {Tools, DEFINITIONS} = require("./tools");
 function toZodShape(params) {
     let shape = {};
     for (const [name, spec] of Object.entries(params || {})) {
-        let base = spec.type === 'number' ? z.number() : z.string();
+        let base = spec.type === 'number' ? z.number()
+            : spec.type === 'boolean' ? z.boolean()
+            : z.string();
         if (spec.description) base = base.describe(spec.description);
         shape[name] = spec.required ? base : base.optional();
     }
