@@ -108,6 +108,7 @@
     "zerocoin"
   ],
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@sendgrid/mail": "^7.7.0",
     "axios": "^1.4.0",
     "body-parser": "^1.20.2",
@@ -135,9 +136,12 @@
   },
   "devDependencies": {
     "chai": "^4.3.7",
-    "mocha": "^10.2.0",
-    "sinon": "^15.0.4",
     "jsdoc": "^4.0.2",
-    "jsdoc-to-markdown": "^8.0.0"
+    "jsdoc-to-markdown": "^8.0.0",
+    "mocha": "^10.2.0",
+    "sinon": "^15.0.4"
+  },
+  "bin": {
+    "bitfox-mcp": "./mcp/server.js"
   }
 }
