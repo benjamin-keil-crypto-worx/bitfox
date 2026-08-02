@@ -23,6 +23,8 @@ class SignalBot {
         this.router = opts.router || CommandRouter.create(opts);
         this.botFactory = opts.botFactory || null;   // injectable for tests
         this.bot = null;
+        // chat ids seen this run, so first contact is logged once rather than every message
+        this.seenChats = new Set();
     }
 
     /**
@@ -50,6 +52,7 @@ class SignalBot {
 
         this.bot.on('message', async (msg) => {
             if (!msg || !msg.text) return;
+            this.noteChat(msg);
             await this.acknowledge(msg);
             let reply = await this.router.handle(msg.chat.id, msg.text);
             if (reply == null) return;
@@ -64,6 +67,24 @@ class SignalBot {
             await this.bot.sendMessage(msg.chat.id, reply);
         });
         return this;
+    }
+
+    /**
+     * Log the first message from a chat id, so an operator can recover the value needed
+     * for TELEGRAM_ALLOWED_CHAT_IDS from the server log without touching Telegram.
+     * Once per chat per run — logging every message would bury it.
+     *
+     * @param msg {Object} the inbound Telegram message
+     * @return {Boolean} whether this was first contact
+     */
+    noteChat(msg) {
+        let id = String(msg.chat.id);
+        if (this.seenChats.has(id)) return false;
+        this.seenChats.add(id);
+        let allowed = this.router.isAllowed(msg.chat.id);
+        console.log(`[SignalBot] first contact from chat id ${id}` +
+            ` (${allowed ? 'allowed' : 'NOT on allowlist'})`);
+        return true;
     }
 
     /**
