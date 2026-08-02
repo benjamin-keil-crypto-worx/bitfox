@@ -135,6 +135,50 @@ function signal(symbol, timeframe, ts, price, rows) {
     return lines.join('\n');
 }
 
+/**
+ * @param symbol {String}
+ * @param horizons {Object} {short:{...}, medium:{...}, long:{...}} from Regime.classify
+ * @return {String} regime across horizons — buckets and numbers, no composite score
+ */
+function regime(symbol, horizons, generatedAt) {
+    let lines = [`${symbol} · ${stamp(generatedAt)}`, ''];
+    for (const [label, r] of Object.entries(horizons)) {
+        if (!r) { lines.push(`${label.padEnd(7)}(unavailable)`); continue; }
+        lines.push(`${label.padEnd(7)}(${r.timeframe.padEnd(3)}) ADX ${n(r.adx, 1).padEnd(6)} ${r.trend.padEnd(13)}` +
+            `vol ${r.volatility} (${n(r.volPercentile, 0)} pctile)`);
+        lines.push(`${''.padEnd(14)}${r.stackOrder ?? 'n/a'} · price ${r.aboveEma200 == null ? 'n/a' : (r.aboveEma200 ? 'above' : 'below')} EMA200`);
+    }
+    lines.push('');
+    lines.push(`Direction is reported, not weighted — measured at -0.39%/trade both with`);
+    lines.push(`and against the EMA200 trend over 15,073 trades.`);
+    return lines.join('\n');
+}
+
+/**
+ * @param id {String}
+ * @param symbol {String}
+ * @param stats {Object} {strategies, reliableBuckets, bucketsExamined}
+ * @return {String} short chat summary; the full document goes out as a file attachment
+ */
+function snapshotSummary(id, symbol, horizons, counts) {
+    let lines = [`${symbol} snapshot · ${id}`, ''];
+    for (const [label, r] of Object.entries(horizons)) {
+        if (!r) continue;
+        lines.push(`${label.padEnd(7)}${r.timeframe.padEnd(4)} ${r.trend} · vol ${r.volatility}`);
+    }
+    lines.push('');
+    lines.push(`Full document attached: regime across horizons, per-strategy performance`);
+    lines.push(`bucketed by regime, sample sizes, and the cost model.`);
+    if (counts) {
+        lines.push('');
+        lines.push(`${counts.examined} regime buckets examined, ${counts.reliable} with n >= ${MIN_MEANINGFUL_TRADES}.`);
+        if (counts.reliable === 0) {
+            lines.push(`⚠ No bucket reached ${MIN_MEANINGFUL_TRADES} trades — treat every bucketed number as noise.`);
+        }
+    }
+    return lines.join('\n');
+}
+
 function help() {
     return [
         `BitFox signalling — read-only market analysis.`,
@@ -145,6 +189,8 @@ function help() {
         `/vol <SYMBOL> <TF>        ATR, ATR%, BB width, ATR percentile`,
         `/signal <SYMBOL> <TF>     what each strategy reads now + its track record`,
         `/backtest <SYMBOL> <TF> <STRATEGY>   measured historical performance`,
+        `/regime <SYMBOL>          regime across short/medium/long horizons`,
+        `/snapshot <SYMBOL>        full markdown snapshot, attached as a file`,
         ``,
         `Example: /trend ADAUSDT 15m`,
         ``,
@@ -154,4 +200,4 @@ function help() {
     ].join('\n');
 }
 
-module.exports = {FORBIDDEN_TOKENS, MIN_MEANINGFUL_TRADES, trend, momentum, levels, volatility, backtest, signal, help, stamp};
+module.exports = {FORBIDDEN_TOKENS, MIN_MEANINGFUL_TRADES, trend, momentum, levels, volatility, backtest, signal, regime, snapshotSummary, help, stamp};

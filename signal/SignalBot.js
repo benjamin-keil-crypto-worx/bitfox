@@ -51,7 +51,16 @@ class SignalBot {
         this.bot.on('message', async (msg) => {
             if (!msg || !msg.text) return;
             let reply = await this.router.handle(msg.chat.id, msg.text);
-            if (reply != null) await this.bot.sendMessage(msg.chat.id, reply);
+            if (reply == null) return;
+            // /snapshot returns {text, filePath}: Telegram caps messages at 4096 chars and a
+            // multi-horizon snapshot exceeds that, so the summary goes in chat and the full
+            // document goes out as an attachment the user can hand to any AI client.
+            if (typeof reply === 'object' && reply.filePath) {
+                await this.bot.sendMessage(msg.chat.id, reply.text);
+                await this.bot.sendDocument(msg.chat.id, reply.filePath);
+                return;
+            }
+            await this.bot.sendMessage(msg.chat.id, reply);
         });
         return this;
     }

@@ -1,11 +1,18 @@
 const {Analysis} = require("./Analysis");
 const {CandleCache} = require("./CandleCache");
 const {BacktestRunner} = require("./BacktestRunner");
+const {SnapshotStore} = require("./SnapshotStore");
+const snapshot = require("./Snapshot");
+const conditional = require("./ConditionalStats");
+const regimeEngine = require("./Regime");
 const registry = require("./Strategies");
 const fmt = require("./Formatter");
 const tf = require("./Timeframe");
 
-const COMMANDS = ['trend', 'momentum', 'levels', 'vol', 'signal', 'backtest', 'help', 'start'];
+const COMMANDS = ['trend', 'momentum', 'levels', 'vol', 'signal', 'backtest', 'regime', 'snapshot', 'help', 'start'];
+
+/** Commands taking only a symbol — timeframes come from the configured horizons. */
+const SYMBOL_ONLY = ['regime', 'snapshot'];
 
 /**
  * Class CommandRouter
@@ -30,6 +37,8 @@ class CommandRouter {
         this.rateLimit = opts.rateLimit || {max: 20, windowMs: 60000};
         this.cache = opts.cache || CandleCache.create(opts);
         this.runner = opts.runner || BacktestRunner.create(opts);
+        this.store = opts.store || SnapshotStore.create(opts);
+        this.horizons = opts.horizons || regimeEngine.DEFAULT_HORIZONS;
         this.hits = new Map();
         // Each poll fetches 200 candles. Sized so /backtest gets a sample worth reporting
         // rather than a fast answer that means nothing — a PF on 12 trades is noise, and
@@ -111,6 +120,15 @@ class CommandRouter {
         if (command === 'help' || command === 'start') return fmt.help();
 
         let [symbolRaw, timeframeRaw, strategyRaw] = args;
+
+        if (SYMBOL_ONLY.includes(command)) {
+            if (!symbolRaw) return `Usage: /${command} <SYMBOL>\nExample: /${command} ADAUSDT`;
+            let symbol = symbolRaw.toUpperCase();
+            return command === 'regime'
+                ? await this.regime(symbol, now)
+                : await this.snapshot(symbol, now);
+        }
+
         if (!symbolRaw || !timeframeRaw) {
             return `Usage: /${command} <SYMBOL> <TIMEFRAME>${command === 'backtest' ? ' <STRATEGY>' : ''}\nExample: /${command} ADAUSDT 15m${command === 'backtest' ? ' Bollinger' : ''}`;
         }
@@ -143,6 +161,72 @@ class CommandRouter {
             case 'vol':      return fmt.volatility(symbol, timeframe, ts, a.volatility());
         }
         return `Unknown command /${command}. Try /help.`;
+    }
+
+    /**
+     * Classify every configured horizon. Returns {label: reading|null}.
+     * @return {Promise<Object>}
+     */
+    async classifyHorizons(symbol, now) {
+        let out = {};
+        for (const [label, timeframe] of Object.entries(this.horizons)) {
+            try {
+                let candles = await this.cache.get(symbol, timeframe, {pollRate: this.pollRates[timeframe], now});
+                out[label] = (candles && candles.length >= 210) ? regimeEngine.classify(candles, timeframe) : null;
+            } catch (err) { out[label] = null; }
+        }
+        return out;
+    }
+
+    /** @return {Promise<String>} */
+    async regime(symbol, now) {
+        let horizons = await this.classifyHorizons(symbol, now);
+        if (Object.values(horizons).every(h => h === null)) {
+            return `Could not load enough closed candles for ${symbol} on any horizon.`;
+        }
+        return fmt.regime(symbol, horizons, now);
+    }
+
+    /**
+     * Build the markdown snapshot, persist it, and return {text, filePath} so the
+     * transport can attach the document. Telegram messages cap at 4096 characters, which
+     * a multi-horizon snapshot exceeds — chat gets the summary, the file gets everything.
+     *
+     * @return {Promise<Object|String>}
+     */
+    async snapshot(symbol, now) {
+        let horizons = await this.classifyHorizons(symbol, now);
+        if (Object.values(horizons).every(h => h === null)) {
+            return `Could not load enough closed candles for ${symbol} on any horizon.`;
+        }
+
+        // conditional stats on the medium horizon: long enough for a workable sample,
+        // short enough to produce trades at all
+        let timeframe = this.horizons.medium || Object.values(this.horizons)[0];
+        let strategies = [];
+        let examined = 0, reliable = 0;
+        try {
+            let candles = await this.cache.get(symbol, timeframe, {pollRate: this.pollRates[timeframe], now});
+            for (const name of registry.names()) {
+                try {
+                    let trades = await this.runner.tradesFor(candles, symbol, timeframe, name);
+                    if (!trades || trades.length === 0) continue;
+                    let stats = conditional.bucketByRegime(trades, candles);
+                    strategies.push({name, timeframe, stats});
+                    examined += stats.bucketsExamined;
+                    reliable += stats.reliableBuckets;
+                } catch (err) { /* a strategy that cannot run simply contributes nothing */ }
+            }
+        } catch (err) { /* snapshot still useful with regime alone */ }
+
+        let markdown = snapshot.build({symbol, horizons, strategies, generatedAt: now});
+        let id = this.store.id(symbol, now);
+        let filePath = this.store.write(id, markdown);
+
+        return {
+            text: fmt.snapshotSummary(id, symbol, horizons, {examined, reliable}),
+            filePath, id, markdown,
+        };
     }
 
     /**
