@@ -1,4 +1,4 @@
-const {CommandRouter} = require("./CommandRouter");
+const {CommandRouter, SLOW_COMMANDS} = require("./CommandRouter");
 
 /**
  * Class SignalBot
@@ -50,6 +50,7 @@ class SignalBot {
 
         this.bot.on('message', async (msg) => {
             if (!msg || !msg.text) return;
+            await this.acknowledge(msg);
             let reply = await this.router.handle(msg.chat.id, msg.text);
             if (reply == null) return;
             // /snapshot returns {text, filePath}: Telegram caps messages at 4096 chars and a
@@ -63,6 +64,28 @@ class SignalBot {
             await this.bot.sendMessage(msg.chat.id, reply);
         });
         return this;
+    }
+
+    /**
+     * Tell the user we are working before a slow command. On a cold cache /snapshot loads
+     * three horizons and runs a backtest per strategy — tens of seconds of silence reads
+     * as a broken bot.
+     *
+     * Deliberately best-effort: a failed acknowledgement must never prevent the real reply.
+     *
+     * @param msg {Object} the inbound Telegram message
+     * @return {Promise<Boolean>} whether an acknowledgement was sent
+     */
+    async acknowledge(msg) {
+        let parsed = this.router.parse(msg.text);
+        if (!parsed || !SLOW_COMMANDS.includes(parsed.command)) return false;
+        // only ack work we will actually do — an unauthorised or rate-limited chat gets
+        // its refusal without a misleading "working..." first
+        if (!this.router.isAllowed(msg.chat.id)) return false;
+        try {
+            await this.bot.sendMessage(msg.chat.id, `Working on /${parsed.command}… this can take a while on a cold cache.`);
+            return true;
+        } catch (e) { return false; }
     }
 
     stop() { if (this.bot && this.bot.stopPolling) this.bot.stopPolling(); }

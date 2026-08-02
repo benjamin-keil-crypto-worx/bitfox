@@ -41,15 +41,32 @@ class Tools {
         catch (err) { return {error: err.message || String(err)}; }
     }
 
-    async getRegime({symbol}) {
+    async getRegime({symbol, cachedOnly}) {
         return this.guard(async () => {
-            let horizons = await this.router.classifyHorizons(String(symbol).toUpperCase(), Date.now());
-            if (Object.values(horizons).every(h => h === null)) {
-                return {error: `Could not load enough closed candles for ${symbol} on any horizon.`};
+            let sym = String(symbol).toUpperCase();
+            let horizons;
+            if (cachedOnly) {
+                // A cold classification loads three horizons and can take tens of seconds,
+                // which some MCP clients will time out on. cachedOnly returns instantly with
+                // whatever is warm and says plainly what is missing, rather than hanging.
+                horizons = {};
+                for (const [label, timeframe] of Object.entries(this.router.horizons)) {
+                    let hit = this.router.cache.entries.get(this.router.cache.key(sym, timeframe));
+                    horizons[label] = hit ? require("../signal/Regime").classify(hit.candles, timeframe) : null;
+                }
+            } else {
+                horizons = await this.router.classifyHorizons(sym, Date.now());
+            }
+            let missing = Object.entries(horizons).filter(([, v]) => v === null).map(([k]) => k);
+            if (missing.length === Object.keys(horizons).length) {
+                return cachedOnly
+                    ? {error: `Nothing cached for ${sym}. Call again without cachedOnly to fetch.`, uncachedHorizons: missing}
+                    : {error: `Could not load enough closed candles for ${sym} on any horizon.`};
             }
             return {
-                symbol: String(symbol).toUpperCase(),
+                symbol: sym,
                 horizons,
+                ...(missing.length ? {uncachedHorizons: missing} : {}),
                 directionNote: 'Direction (vs EMA200, EMA order) is reported but NOT weighted as favourable. ' +
                     'A measurement across 15,073 trades found -0.39%/trade both with and against the EMA200 trend, ' +
                     'so trend alignment carries no measured edge here.',
@@ -139,7 +156,10 @@ const DEFINITIONS = [
             '(ADX trend bucket, ATR-percentile volatility bucket, EMA stack order). This describes the regime ' +
             'the market is IN; it does not forecast the next one. Direction is reported but not weighted as ' +
             'favourable — trend alignment has no measured edge in this repo. Measurements, not advice.',
-        params: {symbol: {type: 'string', required: true, description: 'e.g. BTCUSDT'}},
+        params: {
+            symbol: {type: 'string', required: true, description: 'e.g. BTCUSDT'},
+            cachedOnly: {type: 'boolean', required: false, description: 'return instantly from cache only; a cold fetch loads three horizons and can take tens of seconds'},
+        },
         handler: (t, a) => t.getRegime(a),
     },
     {
