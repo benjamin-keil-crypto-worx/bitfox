@@ -179,6 +179,44 @@ function snapshotSummary(id, symbol, horizons, counts) {
     return lines.join('\n');
 }
 
+/**
+ * Chat id, plus whether this chat currently passes the allowlist.
+ *
+ * A chat id is not a secret — the requester already knows it — but it is the value needed
+ * to configure TELEGRAM_ALLOWED_CHAT_IDS, so it must be discoverable from the bot itself.
+ *
+ * @param chatId {String|Number}
+ * @param allowed {Boolean}
+ * @param allowlistActive {Boolean}
+ * @return {String}
+ */
+function whoami(chatId, allowed, allowlistActive) {
+    let lines = [`Your chat id: ${chatId}`, ''];
+    if (!allowlistActive) {
+        lines.push(`No allowlist is configured, so this bot answers anyone who finds it.`);
+        lines.push(`To restrict it, set TELEGRAM_ALLOWED_CHAT_IDS=${chatId} and restart.`);
+    } else if (allowed) {
+        lines.push(`You are on the allowlist.`);
+    } else {
+        lines.push(`You are NOT on the allowlist — the operator must add ${chatId} to`);
+        lines.push(`TELEGRAM_ALLOWED_CHAT_IDS and restart the bot.`);
+    }
+    return lines.join('\n');
+}
+
+/**
+ * @return {String} welcome shown for /start — reports the chat id, then points at /help
+ */
+function welcome(chatId, allowed, allowlistActive) {
+    return [
+        `BitFox signalling — read-only market analysis.`,
+        ``,
+        whoami(chatId, allowed, allowlistActive),
+        ``,
+        `Send /help for the command list.`,
+    ].join('\n');
+}
+
 function help() {
     return [
         `BitFox signalling — read-only market analysis.`,
@@ -191,6 +229,7 @@ function help() {
         `/backtest <SYMBOL> <TF> <STRATEGY>   measured historical performance`,
         `/regime <SYMBOL>          regime across short/medium/long horizons`,
         `/snapshot <SYMBOL>        full markdown snapshot, attached as a file`,
+        `/whoami                   your chat id (needed to configure the allowlist)`,
         ``,
         `Example: /trend ADAUSDT 15m`,
         ``,
@@ -200,4 +239,4 @@ function help() {
     ].join('\n');
 }
 
-module.exports = {FORBIDDEN_TOKENS, MIN_MEANINGFUL_TRADES, trend, momentum, levels, volatility, backtest, signal, regime, snapshotSummary, help, stamp};
+module.exports = {FORBIDDEN_TOKENS, MIN_MEANINGFUL_TRADES, trend, momentum, levels, volatility, backtest, signal, regime, snapshotSummary, whoami, welcome, help, stamp};

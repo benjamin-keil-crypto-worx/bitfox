@@ -9,7 +9,16 @@ const registry = require("./Strategies");
 const fmt = require("./Formatter");
 const tf = require("./Timeframe");
 
-const COMMANDS = ['trend', 'momentum', 'levels', 'vol', 'signal', 'backtest', 'regime', 'snapshot', 'help', 'start'];
+const COMMANDS = ['trend', 'momentum', 'levels', 'vol', 'signal', 'backtest', 'regime', 'snapshot', 'help', 'start', 'whoami'];
+
+/**
+ * Commands that must answer even when a chat is throttled or not allowlisted.
+ *
+ * A user who cannot discover their own chat id cannot ask to be allowlisted, so gating
+ * identity behind the gate it is needed to pass is a deadlock. These leak nothing: the
+ * chat id is already known to the requester.
+ */
+const IDENTITY_COMMANDS = ['whoami', 'start'];
 
 /** Commands taking only a symbol — timeframes come from the configured horizons. */
 const SYMBOL_ONLY = ['regime', 'snapshot'];
@@ -111,6 +120,12 @@ class CommandRouter {
         if (!COMMANDS.includes(parsed.command)) {
             return `Unknown command /${parsed.command}. Try /help.`;
         }
+        // answered before the allowlist and rate limiter: see IDENTITY_COMMANDS
+        if (IDENTITY_COMMANDS.includes(parsed.command)) {
+            return parsed.command === 'whoami'
+                ? fmt.whoami(chatId, this.isAllowed(chatId), this.allowedChatIds.length > 0)
+                : fmt.welcome(chatId, this.isAllowed(chatId), this.allowedChatIds.length > 0);
+        }
         if (!this.isAllowed(chatId)) {
             return `This bot is restricted. Ask the operator to add your chat id (${chatId}) to TELEGRAM_ALLOWED_CHAT_IDS.`;
         }
@@ -128,7 +143,7 @@ class CommandRouter {
 
     async dispatch(parsed, opts, now) {
         let {command, args} = parsed;
-        if (command === 'help' || command === 'start') return fmt.help();
+        if (command === 'help') return fmt.help();
 
         let [symbolRaw, timeframeRaw, strategyRaw] = args;
 
