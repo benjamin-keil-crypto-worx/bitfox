@@ -26,6 +26,54 @@ It is intended to be used by coders, developers, technically-skilled traders, da
 This application is under heavy development and in beta nothing has been tested. 
 Use this tool and library at your own risk!
 </p>
+
+## 📊 Telegram signalling — the recommended way to use BitFox
+
+Ask about a market and get indicator readings back. Read-only, and it **requires no exchange API credentials at all** — market data and backtests use public endpoints, so the bot cannot place an order.
+
+```
+node signal-bot.js
+```
+
+```
+/trend ADAUSDT 15m
+→ ADAUSDT 15m · 2026-08-01 20:30 UTC
+  Price      0.1725
+  EMA20     0.172802 (price -0.17%)
+  EMA200    0.170411 (price +1.23%)
+  Ribbon     20>50>100>200
+  SuperTrend short @ 0.174200 (flipped 8 bars ago)
+  ADX        16.19 (+DI 19.95 / −DI 22.10)
+```
+
+Commands: `/trend` `/momentum` `/levels` `/vol` `/signal` `/backtest` `/help`
+
+**Output is descriptive, never prescriptive.** No buy/sell calls, no confidence scores, no green arrows. It reports what the indicators read; you decide what that means. This is enforced by a test, not a convention.
+
+### `/backtest` — the part nobody else ships
+
+```
+/backtest BTCUSDT 15m SuperTrend
+→ Window     500 days · 226 trades
+  Profit factor 0.674
+  Return     -77.5%
+  ⚠ This strategy lost money over the tested window.
+  Costs: 0.100% taker both legs + 0.050% slippage.
+```
+
+Every signal bot tells you a signal fired. This one tells you whether that signal historically made money — and warns you when the sample is too small to mean anything, which is the more common way a backtest misleads.
+
+Configure with `TELEGRAM_BOT_TOKEN` and, recommended, `TELEGRAM_ALLOWED_CHAT_IDS`.
+
+## On the bundled strategies
+
+Be clear-eyed about what the evidence supports. Measured on the honest engine (realistic fills, aligned indicators, costs on), **13 of the 14 bundled strategies lose money after costs, and buy-and-hold beat all of them.** Only `DonchianTrend` has survived walk-forward validation, at 5 of 6 criteria.
+
+The strategies are **reference implementations** — worked examples of the strategy contract, not a portfolio. Treat any of them as a money-maker only after running your own walk-forward validation.
+
+Full verdicts, coverage matrix, and rejected approaches: [`.claude/context/STRATEGY-LEDGER.md`](.claude/context/STRATEGY-LEDGER.md).
+
+Autonomous trading via `trade-live.js` still works and is fully supported — but the honest framing is that BitFox gives you an accurate measuring instrument and solid plumbing, not a validated edge.
 <h2>Support BitFox Development </h2>
 <code><span style="color:black">Bitcoin address: </span><span style="color:darkorange"> bc1qs6rvwnx0wlrqlncm90kk7mu0xs6980t85avfll</span></code>
 
@@ -34,6 +82,8 @@ Use this tool and library at your own risk!
 </h3>
 
 <ul>
+  <li>Read-only Telegram signalling layer (on-demand market analysis, no credentials needed)</li>
+  <li>Honest backtesting on demand — reports losses and small samples instead of hiding them</li>
   <li>support for many cryptocurrency exchanges</li>
   <li>fully implemented public and private APIs</li>
   <li>Integrated BackTesting Engine</li>
