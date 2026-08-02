@@ -59,9 +59,29 @@ class BacktestRunner {
     }
 
     /**
-     * @return {Promise<Object>} the reportable summary
+     * Realised trades for a cell, for conditional/regime bucketing (GHBF-50).
+     * Cached alongside summaries — a backtest over a fixed candle window is deterministic.
+     *
+     * @return {Promise<Array>} tradeHistory entries with both legs filled
      */
-    async execute(candles, symbol, timeframe, resolved) {
+    async tradesFor(candles, symbol, timeframe, strategyName) {
+        let resolved = registry.resolve(strategyName);
+        if (!resolved) return [];
+        let k = `trades|${this.key(symbol, timeframe, resolved.name)}`;
+        let hit = this.cache.get(k);
+        if (hit) return hit.result;
+
+        let engine = await this.buildEngine(candles, symbol, timeframe, resolved);
+        let trades = engine.tradeHistory.filter(t => t.entryOrder && t.exitOrder);
+        this.cache.set(k, {result: trades, at: Date.now()});
+        return trades;
+    }
+
+    /**
+     * Runs a strategy and returns the engine, so callers can read metrics or trades.
+     * @return {Promise<BackTestEngine>}
+     */
+    async buildEngine(candles, symbol, timeframe, resolved) {
         let args = {
             symbol, timeframe, amount: 1000,
             profitPct: 1.03, stopLossPct: 0.98,
@@ -78,7 +98,14 @@ class BacktestRunner {
         let engine = BackTestEngine.getBackTester(strategy, args);
         await engine.backTest(candles.map(c => [...c]));
         this.runs++;
+        return engine;
+    }
 
+    /**
+     * @return {Promise<Object>} the reportable summary
+     */
+    async execute(candles, symbol, timeframe, resolved) {
+        let engine = await this.buildEngine(candles, symbol, timeframe, resolved);
         let days = Math.round((candles[candles.length - 1][0] - candles[0][0]) / 86400000);
         if (!engine.metrics || engine.metrics.completedTrades === 0) {
             return {symbol, timeframe, strategy: resolved.name, trades: 0, days, costs: this.costs};
