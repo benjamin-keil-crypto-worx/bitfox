@@ -65,6 +65,31 @@ Every signal bot tells you a signal fired. This one tells you whether that signa
 
 Configure with `TELEGRAM_BOT_TOKEN` and, recommended, `TELEGRAM_ALLOWED_CHAT_IDS`.
 
+## 🤖 MCP server — use BitFox from an AI client
+
+Expose the regime engine, indicator readings, and honest backtests as tools any MCP client can call. **No exchange credentials and no model API keys** — market data is public, and your AI client brings its own model access.
+
+```json
+{
+  "mcpServers": {
+    "bitfox": { "command": "node", "args": ["/absolute/path/to/bitfox/mcp/server.js"] }
+  }
+}
+```
+
+| Tool | Returns |
+|---|---|
+| `get_regime` | regime across short/medium/long horizons |
+| `get_readings` | current indicator readings for a symbol/timeframe |
+| `get_backtest` | measured performance, including losses and small-sample warnings |
+| `list_strategies` | registered strategies with their ledger verdicts |
+| `list_snapshots` | stored snapshots, newest first |
+| `get_snapshot` | a snapshot by id — **including ones captured from Telegram** |
+
+**The Telegram and MCP surfaces share one store**, which is the point: run `/snapshot ADAUSDT` on your phone, then ask your AI client to pull it up by id. Capture on mobile, reason about it at a desk, no copy-paste.
+
+Every tool result carries its sample size, the cost model, and the relevant ledger verdict — so a model reading this data cannot present a no-go strategy as viable.
+
 ## On the bundled strategies
 
 Be clear-eyed about what the evidence supports. Measured on the honest engine (realistic fills, aligned indicators, costs on), **13 of the 14 bundled strategies lose money after costs, and buy-and-hold beat all of them.** Only `DonchianTrend` has survived walk-forward validation, at 5 of 6 criteria.
@@ -83,6 +108,8 @@ Autonomous trading via `trade-live.js` still works and is fully supported — bu
 
 <ul>
   <li>Read-only Telegram signalling layer (on-demand market analysis, no credentials needed)</li>
+  <li>Multi-timeframe market regime evaluation with per-regime strategy statistics</li>
+  <li>MCP server — query regime, readings and backtests from any AI client</li>
   <li>Honest backtesting on demand — reports losses and small samples instead of hiding them</li>
   <li>support for many cryptocurrency exchanges</li>
   <li>fully implemented public and private APIs</li>
